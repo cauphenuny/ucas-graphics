@@ -40,6 +40,15 @@ struct EntityAttribute {
     int priority;
 };
 
+inline struct GlfwContext {
+    GlfwContext() {
+        if (!glfwInit()) {
+            throw std::runtime_error("glfw init failed");
+        }
+    }
+    ~GlfwContext() { glfwTerminate(); }
+} glfw_context;
+
 struct Canvas {
     const CanvasParameters params_;
     GLFWwindow* window;
@@ -47,19 +56,14 @@ struct Canvas {
     std::map<Entity*, EntityAttribute> entity_attributes;
     int priority_counter{0};
 
-    Canvas(const CanvasParameters& params = CanvasParameters()) : params_(params) {
-        this->window_init();
-        this->init();
-    }
+    Canvas(const CanvasParameters& params = CanvasParameters()) : params_(params) {}
 
     void window_init() {
-        glfwInit();
         auto [w, h] = this->params_.display_size;
         spdlog::info("creating GLFW window width: {}, height: {}", w, h);
         this->window = glfwCreateWindow(w, h, this->params_.title.c_str(), NULL, NULL);
         if (!window) {
-            glfwTerminate();
-            throw std::runtime_error("glfw init failed");
+            throw std::runtime_error("glfw create window failed");
         }
     }
 
@@ -78,11 +82,17 @@ struct Canvas {
     }
 
     void spin() {
-        spdlog::info("entering main loop, entity count: {}", entities.size());
+        spdlog::info("entering main loop");
+        spdlog::info("initializing window");
+        this->window_init();
+        this->init();
+        spdlog::info("window initialized");
+        spdlog::info("collecting entities");
         std::vector<Entity*> sorted_entities(entities.begin(), entities.end());
         std::sort(sorted_entities.begin(), sorted_entities.end(), [this](Entity* a, Entity* b) {
             return this->entity_attributes[a].priority < this->entity_attributes[b].priority;
         });
+        spdlog::info("start!");
         while (!glfwWindowShouldClose(this->window)) {
             glClear(GL_COLOR_BUFFER_BIT);
             for (auto entity : sorted_entities) {
@@ -91,8 +101,10 @@ struct Canvas {
             glfwSwapBuffers(window);
             glfwPollEvents();
         }
-        spdlog::info("exit main loop");
-        glfwTerminate();
+        spdlog::info("exiting main loop");
+        glfwDestroyWindow(this->window);
+        this->window = nullptr;
+        spdlog::info("window destroyed");
     }
 
     auto get_entity_attr(Entity* entity) -> EntityAttribute {
@@ -106,7 +118,7 @@ struct Canvas {
 
     template <typename T> auto draw(T config) {
         auto entity = std::make_unique<typename T::EntityType>(this, config);
-        spdlog::info("draw: {}, id={}", entity->repr(), (void*)entity.get());
+        spdlog::info("draw: {}, id={}, canvas={}", entity->repr(), (void*)entity.get(), (void*)this);
         return entity;
     }
 
@@ -115,14 +127,13 @@ struct Canvas {
             spdlog::warn("canvas destructing with remaining entity {}", (void*)entity);
             entity->container = nullptr;
         }
-        glfwDestroyWindow(this->window);
-        spdlog::info("GLFW window destroyed");
     }
 };
 
 inline Entity::Entity(Canvas* canvas) : container(canvas) { this->container->add_entity(this); }
 inline Entity::~Entity() {
     if (this->container) this->container->delete_entity(this);
+    spdlog::info("entity {} destructed", (void*)this);
 }
 inline auto Entity::attribute() const -> EntityAttribute {
     return this->container->get_entity_attr(const_cast<Entity*>(this));

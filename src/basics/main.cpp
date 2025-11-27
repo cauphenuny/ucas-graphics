@@ -77,6 +77,16 @@ struct Computer {
     }
 };
 
+void computer_demo(Canvas& canvas) {
+    Computer computer(&canvas, 0.0, 0.0);
+    canvas.spin();
+}
+
+void interact_demo(Canvas& canvas) {
+    canvas.spin();
+    return;
+}
+
 int main(int argc, char** argv) {
     themes::current_theme = themes::CATPPUCCIN;
     Canvas canvas(
@@ -87,7 +97,7 @@ int main(int argc, char** argv) {
                 .eyeZ = 10,
                 .upY = 1,
             }});
-    Computer computer(&canvas, 0.0, 0.0);
-    canvas.spin();
+    computer_demo(canvas);
+    interact_demo(canvas);
     return 0;
 }
