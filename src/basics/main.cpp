@@ -1,6 +1,7 @@
 #include "canvas.hpp"
 #include "color.hpp"
 #include "entity.hpp"
+#include "painter.hpp"
 
 #include <GLUT/glut.h>
 #include <stdio.h>
@@ -73,6 +74,7 @@ void computer_demo(Canvas& canvas) {
 }
 
 void interact_demo(Canvas& canvas) {
+    canvas.set_action_handler(std::make_unique<painting::Painter>());
     canvas.spin();
     return;
 }

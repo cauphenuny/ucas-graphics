@@ -49,26 +49,38 @@ inline struct GlfwContext {
     ~GlfwContext() { glfwTerminate(); }
 } glfw_context;
 
+struct Canvas;
+
+struct ActionHandler {
+    virtual void on_key(int key, int action) = 0;
+    virtual void on_mouse_button(int button, int action, int mods) = 0;
+    virtual void on_mouse_move(double xpos, double ypos) = 0;
+    virtual ~ActionHandler() = default;
+    Canvas* canvas{nullptr};
+    void attach(Canvas* canvas) { this->canvas = canvas; }
+};
+
 struct Canvas {
-    const CanvasParameters params_;
+    const CanvasParameters params;
     GLFWwindow* window;
     std::set<Entity*> entities;
     std::map<Entity*, EntityAttribute> entity_attributes;
     int priority_counter{0};
+    std::unique_ptr<ActionHandler> action_handler;
 
-    Canvas(const CanvasParameters& params = CanvasParameters()) : params_(params) {}
+    Canvas(const CanvasParameters& params = CanvasParameters()) : params(params) {}
 
     void window_init() {
-        auto [w, h] = this->params_.display_size;
+        auto [w, h] = this->params.display_size;
         spdlog::info("creating GLFW window width: {}, height: {}", w, h);
-        this->window = glfwCreateWindow(w, h, this->params_.title.c_str(), NULL, NULL);
+        this->window = glfwCreateWindow(w, h, this->params.title.c_str(), NULL, NULL);
         if (!window) {
             throw std::runtime_error("glfw create window failed");
         }
     }
 
     void init() {
-        auto& [title, display_size, bg, proj, view] = this->params_;
+        auto& [title, display_size, bg, proj, view] = this->params;
         glfwMakeContextCurrent(this->window);
         glClearColor(bg.red, bg.green, bg.blue, bg.alpha);
         glMatrixMode(GL_PROJECTION);
@@ -81,20 +93,55 @@ struct Canvas {
             view.upY, view.upZ);
     }
 
+    void attach_handler(ActionHandler* handler) {
+        spdlog::info("attaching action handler to canvas {}", (void*)this);
+        auto key_callback = [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+            ActionHandler* self = static_cast<ActionHandler*>(glfwGetWindowUserPointer(window));
+            self->on_key(key, action);
+        };
+        auto mouse_button_callback = [](GLFWwindow* window, int button, int action, int mods) {
+            ActionHandler* self = static_cast<ActionHandler*>(glfwGetWindowUserPointer(window));
+            self->on_mouse_button(button, action, mods);
+        };
+        auto mouse_move_callback = [](GLFWwindow* window, double xpos, double ypos) {
+            ActionHandler* self = static_cast<ActionHandler*>(glfwGetWindowUserPointer(window));
+            self->on_mouse_move(xpos, ypos);
+        };
+        glfwSetWindowUserPointer(this->window, handler);
+        glfwSetKeyCallback(this->window, key_callback);
+        glfwSetMouseButtonCallback(this->window, mouse_button_callback);
+        glfwSetCursorPosCallback(this->window, mouse_move_callback);
+        handler->attach(this);
+        spdlog::info("action handler attached");
+    }
+
+    void detach_handler() {
+        spdlog::info("detaching action handler from canvas {}", (void*)this);
+        glfwSetWindowUserPointer(this->window, nullptr);
+        glfwSetKeyCallback(this->window, nullptr);
+        glfwSetMouseButtonCallback(this->window, nullptr);
+        glfwSetCursorPosCallback(this->window, nullptr);
+        spdlog::info("action handler detached");
+        this->action_handler.reset();
+    }
+
     void spin() {
         spdlog::info("entering main loop");
         spdlog::info("initializing window");
         this->window_init();
         this->init();
         spdlog::info("window initialized");
-        spdlog::info("collecting entities");
-        std::vector<Entity*> sorted_entities(entities.begin(), entities.end());
-        std::sort(sorted_entities.begin(), sorted_entities.end(), [this](Entity* a, Entity* b) {
-            return this->entity_attributes[a].priority < this->entity_attributes[b].priority;
-        });
+        if (this->action_handler) {
+            spdlog::info("attaching action handler");
+            this->attach_handler(this->action_handler.get());
+        }
         spdlog::info("start!");
         while (!glfwWindowShouldClose(this->window)) {
             glClear(GL_COLOR_BUFFER_BIT);
+            std::vector<Entity*> sorted_entities(entities.begin(), entities.end());
+            std::sort(sorted_entities.begin(), sorted_entities.end(), [this](Entity* a, Entity* b) {
+                return this->entity_attributes[a].priority < this->entity_attributes[b].priority;
+            });
             for (auto entity : sorted_entities) {
                 entity->draw();
             }
@@ -122,11 +169,17 @@ struct Canvas {
         return entity;
     }
 
+    void set_action_handler(std::unique_ptr<ActionHandler> handler) {
+        this->action_handler = std::move(handler);
+    }
+
     ~Canvas() {
+        action_handler.reset();
         for (auto entity : entities) {
             spdlog::warn("canvas destructing with remaining entity {}", (void*)entity);
             entity->container = nullptr;
         }
+        spdlog::info("canvas {} destructed", (void*)this);
     }
 };
 
