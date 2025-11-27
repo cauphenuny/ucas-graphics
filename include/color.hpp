@@ -1,6 +1,7 @@
 #pragma once
 
 #include <OpenGL/gl.h>
+#include <OpenGL/gltypes.h>
 #include <algorithm>
 #include <fmt/format.h>
 #include <glfw/glfw3.h>
@@ -17,7 +18,10 @@ struct HexColor {
 
 struct RGBColor {
     GLdouble red, green, blue, alpha{1.0};
-    RGBColor(GLdouble r, GLdouble g, GLdouble b) : red(r), green(g), blue(b) {}
+    RGBColor(GLubyte r, GLubyte g, GLubyte b, GLubyte a = 255)
+        : red(r / 255.0), green(g / 255.0), blue(b / 255.0), alpha(a / 255.0) {}
+    RGBColor(GLdouble r, GLdouble g, GLdouble b, GLdouble a = 1.0)
+        : red(r), green(g), blue(b), alpha(a) {}
     RGBColor(HexColor hex);
     RGBColor(const std::string_view color_name);
     RGBColor(const char* color_name) : RGBColor(std::string_view{color_name}) {}
@@ -127,6 +131,15 @@ inline RGBColor::RGBColor(const std::string_view color_name) {
     }
 }
 
+inline auto mix(RGBColor c1, RGBColor c2, double t) -> RGBColor {
+    t = std::max(0.0, std::min(1.0, t));
+    GLubyte r = static_cast<GLubyte>(c1.red * (1.0 - t) + c2.red * t);
+    GLubyte g = static_cast<GLubyte>(c1.green * (1.0 - t) + c2.green * t);
+    GLubyte b = static_cast<GLubyte>(c1.blue * (1.0 - t) + c2.blue * t);
+    GLubyte a = static_cast<GLubyte>(c1.alpha * (1.0 - t) + c2.alpha * t);
+    return RGBColor{r, g, b, a};
+}
+
 }  // namespace opengl
 
 namespace fmt {
@@ -138,7 +151,9 @@ template <> struct formatter<opengl::RGBColor> {
 
     template <typename FormatContext>
     auto format(const opengl::RGBColor& c, FormatContext& ctx) const -> decltype(ctx.out()) {
-        return fmt::format_to(ctx.out(), "RGBColor({}, {}, {})", c.red, c.green, c.blue);
+        return fmt::format_to(
+            ctx.out(), "RGBColor({}, {}, {})", (uint8_t)(c.red * 255), (uint8_t)(c.green * 255),
+            (uint8_t)(c.blue * 255));
     }
 };
 
