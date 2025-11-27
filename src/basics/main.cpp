@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
     themes::current_theme = themes::CATPPUCCIN;
     Canvas canvas(
         CanvasParameters{
-            .title = "OpenGL 3D View",
+            .title = "Project 1",
             .background = "background",
             .view_point = {
                 .eyeZ = 10,
