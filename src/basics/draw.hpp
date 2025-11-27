@@ -316,9 +316,10 @@ inline void text(
     }
     double normalized_scale = std::max(0.001, 0.0027 * scale);
     float line_width = std::max(1.0f, static_cast<float>(2.0 * scale));
+    constexpr double kStrokeFontHeight = 110;
     glPushMatrix();
     glColor3d(color.red, color.green, color.blue);
-    glTranslated(origin.x, origin.y, 0.0);
+    glTranslated(origin.x, origin.y - normalized_scale * kStrokeFontHeight * 0.5, 0.0);
     glScaled(normalized_scale, normalized_scale, 1.0);
     // set a thicker line width for stroke font rendering
     glLineWidth(line_width);
@@ -328,8 +329,8 @@ inline void text(
     auto offsets =
         std::views::iota(-static_cast<int>(offset / step), static_cast<int>(offset / step) + 1) |
         std::views::transform([step](int idx) { return static_cast<double>(idx) * step; });
-    for (double ox : {0}) {
-        for (double oy : {0}) {
+    for (double ox : offsets) {
+        for (double oy : offsets) {
             glPushMatrix();
             glTranslated(ox, oy, 0.0);
             for (unsigned char ch : content) {

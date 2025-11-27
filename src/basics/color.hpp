@@ -30,14 +30,14 @@ struct Color {
 namespace themes {
 
 enum class Color {
-    BLACK = 0,  // background
+    WHITE = 0,  // background
     RED = 1,
     GREEN = 2,
     YELLOW = 3,
     BLUE = 4,
     MAGENTA = 5,
     CYAN = 6,
-    WHITE = 7,  // foreground
+    BLACK = 7,  // foreground
     BRIGHT_BLACK = 8,
     BRIGHT_RED = 9,
     BRIGHT_GREEN = 10,
@@ -120,9 +120,9 @@ inline Color::Color(const std::string_view color_name) {
     using namespace themes;
     std::string name{color_name};
     if (name == "foreground") {
-        name = "white";
-    } else if (name == "background") {
         name = "black";
+    } else if (name == "background") {
+        name = "white";
     }
     // convert to uppercase because magic_enum expects enum names like "WHITE", "BLACK"
     std::transform(

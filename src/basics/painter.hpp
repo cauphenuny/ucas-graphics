@@ -211,19 +211,34 @@ private:
 
     Vertex2d last_cursor_world{0.0, 0.0};
 
-    std::vector<std::string> stroke_palette{
-        "bright_red", "bright_green", "bright_magenta", "bright_cyan"};
+    std::vector<std::string> stroke_palette{"black",         "red",         "green",
+                                            "blue",          "yellow",      "magenta",
+                                            "cyan",          "bright_red",  "bright_green",
+                                            "bright_yellow", "bright_blue", "bright_magenta",
+                                            "bright_cyan"};
     std::size_t stroke_color_index{0};
-    std::vector<double> stroke_width_options{1.0, 2.0, 3.5, 5.0};
+    std::vector<double> stroke_width_options{0.5, 1.0, 2.0, 3.5, 5.0};
     std::size_t stroke_width_index{1};
     std::vector<std::optional<std::string>> fill_palette{
-        std::nullopt, std::string{"bright_yellow"}, std::string{"bright_green"},
+        std::nullopt,
+        std::string{"black"},
+        std::string{"red"},
+        std::string{"green"},
+        std::string{"blue"},
+        std::string{"yellow"},
+        std::string{"magenta"},
+        std::string{"cyan"},
+        std::string{"bright_red"},
+        std::string{"bright_green"},
+        std::string{"bright_yellow"},
+        std::string{"bright_blue"},
+        std::string{"bright_magenta"},
         std::string{"bright_cyan"}};
     std::size_t fill_color_index{0};
-    std::vector<double> radius_options{0.0, 0.5, 1.0, 1.5};
+    std::vector<double> radius_options{0.0, 0.1, 0.3, 0.5, 1.0, 1.5};
     std::size_t corner_radius_index{0};
 
-    Color preview_color{"bright_yellow"};
+    Color preview_color{mix("foreground", "background", 0.8)};
 
     void ensure_menu_layer() {
         if (menu_layer || !canvas) {
