@@ -11,11 +11,19 @@
 #include <fmt/format.h>
 #include <glfw/glfw3.h>
 #include <magic_enum/magic_enum.hpp>
+#include <optional>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <sys/types.h>
 
 namespace opengl {
+
+template <typename T> auto optional_repr(const std::optional<T>& value) -> std::string {
+    if (value) {
+        return fmt::format("{}", *value);
+    }
+    return "nullopt";
+}
 
 struct Canvas;
 struct EntityAttribute;
@@ -58,9 +66,8 @@ struct Triangle {
     Vertex2d p1;
     Vertex2d p2;
     Vertex2d p3;
-    Color color{0.0, 0.0, 0.0};       // stroke color
-    Color fill_color{0.0, 0.0, 0.0};  // fill color
-    bool filled{true};
+    Color color{"foreground"};  // stroke color
+    std::optional<Color> fill_color;
     double stroke{1.0};
     using EntityType = TriangleEntity;
 };
@@ -71,8 +78,8 @@ struct TriangleEntity : Entity {
     TriangleEntity(Canvas* canvas, Triangle config) : Entity(canvas), config(config) {}
 
     void draw() const override {
-        if (config.filled) {
-            draw::triangle(config.p1, config.p2, config.p3, config.fill_color);
+        if (config.fill_color) {
+            draw::triangle(config.p1, config.p2, config.p3, *config.fill_color);
         }
         if (config.stroke > 0.0) {
             draw::triangle_outline(config.p1, config.p2, config.p3, config.color, config.stroke);
@@ -80,9 +87,8 @@ struct TriangleEntity : Entity {
     }
     std::string repr() const override {
         return fmt::format(
-            "Triangle(p1={}, p2={}, p3={}, color={}, fill_color={}, filled={}, stroke={})",
-            config.p1, config.p2, config.p3, config.color, config.fill_color, config.filled,
-            config.stroke);
+            "Triangle(p1={}, p2={}, p3={}, color={}, fill_color={}, stroke={})", config.p1,
+            config.p2, config.p3, config.color, optional_repr(config.fill_color), config.stroke);
     }
 };
 
@@ -91,9 +97,8 @@ struct CircleEntity;
 struct Circle {
     Vertex2d center;
     double radius;
-    Color color{"foreground"};       // stroke color
-    Color fill_color{"foreground"};  // fill color
-    bool filled{true};
+    Color color{"foreground"};  // stroke color
+    std::optional<Color> fill_color;
     double stroke{1.0};
     using EntityType = CircleEntity;
 };
@@ -102,8 +107,8 @@ struct CircleEntity : Entity {
     Circle config;
     CircleEntity(Canvas* canvas, Circle config) : Entity(canvas), config(config) {}
     void draw() const override {
-        if (config.filled) {
-            draw::circle_filled(config.center, config.radius, config.fill_color);
+        if (config.fill_color) {
+            draw::circle_filled(config.center, config.radius, *config.fill_color);
         }
         if (config.stroke > 0.0) {
             draw::circle_outline(config.center, config.radius, config.color, 64, config.stroke);
@@ -111,9 +116,8 @@ struct CircleEntity : Entity {
     }
     std::string repr() const override {
         return fmt::format(
-            "Circle(center={}, radius={}, color={}, fill_color={}, filled={}, stroke={})",
-            config.center, config.radius, config.color, config.fill_color, config.filled,
-            config.stroke);
+            "Circle(center={}, radius={}, color={}, fill_color={}, stroke={})", config.center,
+            config.radius, config.color, optional_repr(config.fill_color), config.stroke);
     }
 };
 
@@ -146,11 +150,9 @@ struct Rectangle {
     Vertex2d center;
     double width;
     double height;
-    bool is_round{false};
-    double corner_radius{0.0};
-    Color color{"foreground"};       // stroke color
-    Color fill_color{"foreground"};  // fill color
-    bool filled{true};
+    std::optional<double> corner_radius{};
+    Color color{"foreground"};  // stroke color
+    std::optional<Color> fill_color = Color{"foreground"};
     double stroke{1.0};
     using EntityType = RectangleEntity;
 };
@@ -159,19 +161,19 @@ struct RectangleEntity : Entity {
     Rectangle config;
     RectangleEntity(Canvas* canvas, Rectangle config) : Entity(canvas), config(config) {}
     void draw() const override {
-        if (config.filled) {
-            if (config.is_round) {
+        if (config.fill_color) {
+            if (config.corner_radius) {
                 draw::rounded_rect_filled(
-                    config.center, config.width, config.height, config.corner_radius,
-                    config.fill_color);
+                    config.center, config.width, config.height, *config.corner_radius,
+                    *config.fill_color);
             } else {
-                draw::rect_filled(config.center, config.width, config.height, config.fill_color);
+                draw::rect_filled(config.center, config.width, config.height, *config.fill_color);
             }
         }
         if (config.stroke > 0.0) {
-            if (config.is_round) {
+            if (config.corner_radius) {
                 draw::rounded_rect_outline(
-                    config.center, config.width, config.height, config.corner_radius, config.color,
+                    config.center, config.width, config.height, *config.corner_radius, config.color,
                     config.stroke);
             } else {
                 draw::rect_outline(
@@ -181,10 +183,10 @@ struct RectangleEntity : Entity {
     }
     std::string repr() const override {
         return fmt::format(
-            "Rectangle(center={}, width={}, height={}, is_round={}, corner_radius={}, color={}, "
-            "fill_color={}, filled={}, stroke={})",
-            config.center, config.width, config.height, config.is_round, config.corner_radius,
-            config.color, config.fill_color, config.filled, config.stroke);
+            "Rectangle(center={}, width={}, height={}, corner_radius={}, color={}, fill_color={}, "
+            "stroke={})",
+            config.center, config.width, config.height, optional_repr(config.corner_radius),
+            config.color, optional_repr(config.fill_color), config.stroke);
     }
 };
 

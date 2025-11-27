@@ -24,38 +24,30 @@ struct Computer {
                 .center = {base_x, base_y},
                 .width = base_w,
                 .height = base_h,
-                .is_round = true,
                 .corner_radius = 0.15,
                 .fill_color = base_color,
-                .filled = true,
             }));
         parts.insert(canvas->draw(
             Rectangle{
                 .center = {base_x, screen_y - screen_h / 2},
                 .width = base_w * 0.6,
                 .height = base_delta * 2,
-                .is_round = false,
                 .fill_color = base_color,
-                .filled = true,
             }));
         parts.insert(canvas->draw(
             Rectangle{
                 .center = {screen_x, screen_y},
                 .width = screen_w,
                 .height = screen_h,
-                .is_round = false,
                 .fill_color = margin_color,
-                .filled = true,
             }));
         parts.insert(canvas->draw(
             Rectangle{
                 .center = {screen_x, screen_y},
                 .width = screen_w - margin,
                 .height = screen_h - margin,
-                .is_round = true,
                 .corner_radius = 0.2,
                 .fill_color = "bright_blue",
-                .filled = true,
             }));
         double triangle_l1 = 0.6, triangle_l2 = 0.4;
         parts.insert(canvas->draw(
@@ -64,7 +56,6 @@ struct Computer {
                 .p2 = {screen_x + triangle_l1, screen_y - triangle_l2},
                 .p3 = {screen_x, screen_y + triangle_l2 * 1.5},
                 .fill_color = "bright_yellow",
-                .filled = true,
             }));
         double circle_r = 0.2;
         parts.insert(canvas->draw(
@@ -72,7 +63,6 @@ struct Computer {
                 .center = {screen_x, screen_y},
                 .radius = circle_r,
                 .fill_color = "bright_red",
-                .filled = true,
             }));
     }
 };
