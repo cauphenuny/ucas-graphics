@@ -201,17 +201,18 @@ private:
 
     Vertex2d last_cursor_world{0.0, 0.0};
 
-    std::vector<std::string> stroke_palette{"black",         "red",         "green",
-                                            "blue",          "yellow",      "magenta",
-                                            "cyan",          "bright_red",  "bright_green",
-                                            "bright_yellow", "bright_blue", "bright_magenta",
-                                            "bright_cyan"};
+    std::vector<std::string> stroke_palette{"foreground",     "background",    "red",
+                                            "green",          "blue",          "yellow",
+                                            "magenta",        "cyan",          "bright_red",
+                                            "bright_green",   "bright_yellow", "bright_blue",
+                                            "bright_magenta", "bright_cyan"};
     std::size_t stroke_color_index{0};
     std::vector<double> stroke_width_options{0.5, 1.0, 2.0, 3.5, 5.0};
     std::size_t stroke_width_index{1};
     std::vector<std::optional<std::string>> fill_palette{
         std::nullopt,
-        std::string{"black"},
+        std::string{"foreground"},
+        std::string{"background"},
         std::string{"red"},
         std::string{"green"},
         std::string{"blue"},
@@ -267,6 +268,7 @@ private:
         DraftContext ctx = make_draft_context();
         switch (type) {
             case ShapeType::Polygon: return std::make_unique<PolygonDraft>(std::move(ctx));
+            case ShapeType::Polyline: return std::make_unique<PolylineDraft>(std::move(ctx));
             case ShapeType::Rectangle: return std::make_unique<RectangleDraft>(std::move(ctx));
             case ShapeType::Line: return std::make_unique<LineDraft>(std::move(ctx));
             case ShapeType::Circle: return std::make_unique<CircleDraft>(std::move(ctx));
@@ -290,6 +292,7 @@ private:
         if (!commit_info.entity) {
             return;
         }
+        spdlog::info("committing draft of shape type: {}", magic_enum::enum_name(commit_info.shape_type));
         int priority = allocate_committed_priority();
         commit_info.entity->set_priority(priority);
         drawn_entities.push_back(
@@ -470,7 +473,8 @@ private:
 
     void cycle_shape_type() {
         switch (active_shape) {
-            case ShapeType::Polygon: active_shape = ShapeType::Rectangle; break;
+            case ShapeType::Polygon: active_shape = ShapeType::Polyline; break;
+            case ShapeType::Polyline: active_shape = ShapeType::Rectangle; break;
             case ShapeType::Rectangle: active_shape = ShapeType::Line; break;
             case ShapeType::Line: active_shape = ShapeType::Circle; break;
             case ShapeType::Circle: active_shape = ShapeType::Polygon; break;

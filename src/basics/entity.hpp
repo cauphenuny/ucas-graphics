@@ -42,6 +42,7 @@ struct Entity {
 
 struct LineEntity;
 struct TriangleEntity;
+struct PolylineEntity;
 
 struct Line {
     Vertex2d start;
@@ -225,6 +226,31 @@ struct PolygonEntity : Entity {
         return fmt::format(
             "Polygon(points={}, color={}, fill_color={}, stroke={})", config.points.size(),
             config.color, optional_repr(config.fill_color), config.stroke);
+    }
+};
+
+struct Polyline {
+    std::vector<Vertex2d> points;
+    Color color{"foreground"};
+    double stroke{1.0};
+    using EntityType = PolylineEntity;
+};
+
+struct PolylineEntity : Entity {
+    Polyline config;
+    PolylineEntity(Canvas* canvas, Polyline config) : Entity(canvas), config(std::move(config)) {}
+
+    void draw() const override {
+        if (config.points.size() < 2 || config.stroke <= 0.0) {
+            return;
+        }
+        draw::detail::draw_polyline(config.points, false, config.color, config.stroke);
+    }
+
+    std::string repr() const override {
+        return fmt::format(
+            "Polyline(points={}, color={}, stroke={})", config.points.size(), config.color,
+            config.stroke);
     }
 };
 

@@ -72,7 +72,7 @@ Bright Magenta (13)	#FF55FF
 Bright Cyan (14)	#55FFFF
 Bright White (15)	#FFFFFF
 */
-constexpr Palette DEFAULT = {0x000000, 0xAA0000, 0x00AA00, 0xAA5500, 0x0000AA, 0xAA00AA,
+constexpr Palette XTERM = {0x000000, 0xAA0000, 0x00AA00, 0xAA5500, 0x0000AA, 0xAA00AA,
                              0x00AAAA, 0xAAAAAA, 0x555555, 0xFF5555, 0x55FF55, 0xFFFF55,
                              0x5555FF, 0xFF55FF, 0x55FFFF, 0xFFFFFF};
 
@@ -106,7 +106,7 @@ constexpr Palette CATPPUCCIN_DARK = {
     0x1e1e2e, 0xed8796, 0xa6da95, 0xeed49f, 0x8aadf4, 0xc6a0f6, 0x8bd5ca, 0xcad3f5,
     0x24273a, 0xf38ba8, 0xa6e3a1, 0xf9e2af, 0x89bffa, 0xcba6f7, 0x94e2d5, 0xeff1f5 };
 
-inline Palette current_theme = DEFAULT;
+inline Palette current_theme = CATPPUCCIN;
 
 }  // namespace themes
 

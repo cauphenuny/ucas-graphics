@@ -16,7 +16,7 @@ namespace opengl {
 
 namespace painting {
 
-enum class ShapeType { Line, Rectangle, Polygon, Circle };
+enum class ShapeType { Line, Rectangle, Polygon, Circle, Polyline };
 
 struct DraftStyle {
     Color stroke_color{"foreground"};
@@ -451,6 +451,132 @@ private:
             .entity = std::move(entity),
             .rebuild = rebuild,
             .shape_type = ShapeType::Polygon,
+        };
+    }
+};
+
+class PolylineDraft : public Draft {
+public:
+    explicit PolylineDraft(DraftContext ctx) : Draft(std::move(ctx)) {}
+
+    std::string name() const override { return "Polyline"; }
+
+    void on_mouse_button(int button, int action, int /*mods*/, const Vertex2d& world) override {
+        if (button != GLFW_MOUSE_BUTTON_LEFT || action != GLFW_PRESS) {
+            return;
+        }
+        add_point(world);
+    }
+
+    void on_mouse_move(const Vertex2d& world) override { update_preview(world); }
+
+    void on_key(int key, int action) override {
+        if (action != GLFW_PRESS) {
+            return;
+        }
+        if ((key == GLFW_KEY_ENTER || key == GLFW_KEY_ESCAPE) && points_.size() >= 2) {
+            auto points = points_;
+            reset();
+            commit(make_commit(std::move(points)));
+        }
+        if (key == GLFW_KEY_ESCAPE) {
+            reset();
+            return;
+        }
+    }
+
+    void refresh_style() override {
+        auto style = current_style();
+        for (auto& seg : segments_) {
+            seg->config.color = style.stroke_color;
+            seg->config.stroke = style.stroke_width;
+        }
+        if (preview_segment_) {
+            preview_segment_->config.color = preview_color();
+            preview_segment_->config.stroke = style.stroke_width;
+        }
+    }
+
+    void reset() override {
+        points_.clear();
+        segments_.clear();
+        preview_segment_.reset();
+    }
+
+private:
+    std::vector<Vertex2d> points_;
+    std::vector<std::unique_ptr<LineEntity>> segments_;
+    std::unique_ptr<LineEntity> preview_segment_;
+
+    void add_point(const Vertex2d& point) {
+        if (!canvas()) {
+            return;
+        }
+        points_.push_back(point);
+        if (points_.size() >= 2) {
+            add_segment(points_[points_.size() - 2], points_.back());
+        }
+        preview_segment_.reset();
+    }
+
+    void add_segment(const Vertex2d& start, const Vertex2d& end) {
+        auto style = current_style();
+        Line line{
+            .start = start,
+            .end = end,
+            .color = style.stroke_color,
+            .stroke = style.stroke_width,
+        };
+        auto segment = canvas()->draw(line);
+        segment->set_priority(allocate_working_priority());
+        segments_.push_back(std::move(segment));
+    }
+
+    void update_preview(const Vertex2d& world) {
+        if (points_.empty() || !canvas()) {
+            preview_segment_.reset();
+            return;
+        }
+        if (!preview_segment_) {
+            Line line{
+                .start = points_.back(),
+                .end = world,
+                .color = preview_color(),
+                .stroke = current_style().stroke_width,
+            };
+            preview_segment_ = canvas()->draw(line);
+            preview_segment_->set_priority(allocate_working_priority());
+        } else {
+            preview_segment_->config.start = points_.back();
+            preview_segment_->config.end = world;
+        }
+    }
+
+    DraftCommit make_commit(std::vector<Vertex2d> points) {
+        if (!canvas() || points.size() < 2) {
+            return {};
+        }
+        auto style = current_style();
+        Polyline polyline{
+            .points = std::move(points),
+            .color = style.stroke_color,
+            .stroke = style.stroke_width,
+        };
+        auto captured_points = polyline.points;
+        auto entity = canvas()->draw(polyline);
+        auto rebuild = [captured_points =
+                            std::move(captured_points)](Canvas* canvas, const DraftStyle& style) {
+            Polyline cfg{
+                .points = captured_points,
+                .color = style.stroke_color,
+                .stroke = style.stroke_width,
+            };
+            return canvas->draw(cfg);
+        };
+        return DraftCommit{
+            .entity = std::move(entity),
+            .rebuild = rebuild,
+            .shape_type = ShapeType::Polyline,
         };
     }
 };
