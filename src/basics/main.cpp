@@ -1,5 +1,6 @@
-#include "color.hpp"
 #include "canvas.hpp"
+#include "color.hpp"
+#include "entity.hpp"
 
 #include <GLUT/glut.h>
 #include <stdio.h>
@@ -11,15 +12,39 @@ struct Computer {
     std::set<std::unique_ptr<Entity>> parts;
     Computer(Canvas* canvas, double center_x = 0.0, double center_y = 0.0) {
         auto screen_x = center_x, screen_y = center_y + 0.5;
-        auto screen_w = 1.5, screen_h = 1.0;
-        auto margin = 0.1;
+        double screen_w = 3, screen_h = 2;
+        double base_delta = 0.4;
+        double base_x = screen_x, base_y = screen_y - screen_h / 2 - base_delta;
+        double base_w = 1.5, base_h = 0.5;
+        double margin = 0.2;
+        auto base_color = mix("foreground", "background", 0.5);
+        auto margin_color = mix("foreground", "background", 0.8);
+        parts.insert(canvas->draw(
+            Rectangle{
+                .center = {base_x, base_y},
+                .width = base_w,
+                .height = base_h,
+                .is_round = true,
+                .corner_radius = 0.15,
+                .fill_color = base_color,
+                .filled = true,
+            }));
+        parts.insert(canvas->draw(
+            Rectangle{
+                .center = {base_x, screen_y - screen_h / 2},
+                .width = base_w * 0.6,
+                .height = base_delta * 2,
+                .is_round = false,
+                .fill_color = base_color,
+                .filled = true,
+            }));
         parts.insert(canvas->draw(
             Rectangle{
                 .center = {screen_x, screen_y},
                 .width = screen_w,
                 .height = screen_h,
                 .is_round = false,
-                .color = mix("foreground", "background", 1),
+                .fill_color = margin_color,
                 .filled = true,
             }));
         parts.insert(canvas->draw(
@@ -28,9 +53,26 @@ struct Computer {
                 .width = screen_w - margin,
                 .height = screen_h - margin,
                 .is_round = true,
-                .corner_radius = 0.1,
-                .color = "foreground",
-                .filled = false,
+                .corner_radius = 0.2,
+                .fill_color = "bright_blue",
+                .filled = true,
+            }));
+        double triangle_l1 = 0.6, triangle_l2 = 0.4;
+        parts.insert(canvas->draw(
+            Triangle{
+                .p1 = {screen_x - triangle_l1, screen_y - triangle_l2},
+                .p2 = {screen_x + triangle_l1, screen_y - triangle_l2},
+                .p3 = {screen_x, screen_y + triangle_l2 * 1.5},
+                .fill_color = "bright_yellow",
+                .filled = true,
+            }));
+        double circle_r = 0.2;
+        parts.insert(canvas->draw(
+            Circle{
+                .center = {screen_x, screen_y},
+                .radius = circle_r,
+                .fill_color = "bright_red",
+                .filled = true,
             }));
     }
 };

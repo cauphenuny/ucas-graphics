@@ -95,6 +95,16 @@ inline void triangle(Vertex2d p1, Vertex2d p2, Vertex2d p3, RGBColor color) {
     glEnd();
 }
 
+inline void
+triangle_outline(Vertex2d p1, Vertex2d p2, Vertex2d p3, RGBColor color, double line_width = 1.0) {
+    std::vector<Vertex2d> points;
+    points.reserve(3);
+    points.emplace_back(p1);
+    points.emplace_back(p2);
+    points.emplace_back(p3);
+    detail::draw_polyline(points, true, color, line_width);
+}
+
 // 画圆（描边）
 // center: 圆心, radius: 半径, color: 颜色, segments: 分段数（越大越圆）
 inline void circle_outline(

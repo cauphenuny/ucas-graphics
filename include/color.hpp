@@ -96,9 +96,15 @@ Bright Magenta (13)	#cba6f7
 Bright Cyan (14)	#94e2d5
 Bright White (15)	#eff1f5
 */
-constexpr Palette CATPPUCCIN = {0x1e1e2e, 0xed8796, 0xa6da95, 0xeed49f, 0x8aadf4, 0xc6a0f6,
-                                0x8bd5ca, 0xcad3f5, 0x24273a, 0xf38ba8, 0xa6e3a1, 0xf9e2af,
-                                0x89bffa, 0xcba6f7, 0x94e2d5, 0xeff1f5};
+
+
+constexpr Palette CATPPUCCIN = {
+    0xcad3f5, 0xed8796, 0xa6da95, 0xeed49f, 0x8aadf4, 0xc6a0f6, 0x8bd5ca, 0x1e1e2e,
+    0xeff1f5, 0xf38ba8, 0xa6e3a1, 0xf9e2af, 0x89bffa, 0xcba6f7, 0x94e2d5, 0x24273a, };
+
+constexpr Palette CATPPUCCIN_DARK = {
+    0x1e1e2e, 0xed8796, 0xa6da95, 0xeed49f, 0x8aadf4, 0xc6a0f6, 0x8bd5ca, 0xcad3f5,
+    0x24273a, 0xf38ba8, 0xa6e3a1, 0xf9e2af, 0x89bffa, 0xcba6f7, 0x94e2d5, 0xeff1f5 };
 
 inline Palette current_theme = DEFAULT;
 
@@ -133,10 +139,10 @@ inline RGBColor::RGBColor(const std::string_view color_name) {
 
 inline auto mix(RGBColor c1, RGBColor c2, double t) -> RGBColor {
     t = std::max(0.0, std::min(1.0, t));
-    GLubyte r = static_cast<GLubyte>(c1.red * (1.0 - t) + c2.red * t);
-    GLubyte g = static_cast<GLubyte>(c1.green * (1.0 - t) + c2.green * t);
-    GLubyte b = static_cast<GLubyte>(c1.blue * (1.0 - t) + c2.blue * t);
-    GLubyte a = static_cast<GLubyte>(c1.alpha * (1.0 - t) + c2.alpha * t);
+    GLdouble r = (c1.red * (1.0 - t) + c2.red * t);
+    GLdouble g = (c1.green * (1.0 - t) + c2.green * t);
+    GLdouble b = (c1.blue * (1.0 - t) + c2.blue * t);
+    GLdouble a = (c1.alpha * (1.0 - t) + c2.alpha * t);
     return RGBColor{r, g, b, a};
 }
 
