@@ -16,15 +16,15 @@ struct HexColor {
     unsigned int hex;
 };
 
-struct RGBColor {
+struct Color {
     GLdouble red, green, blue, alpha{1.0};
-    RGBColor(GLubyte r, GLubyte g, GLubyte b, GLubyte a = 255)
+    Color(GLubyte r, GLubyte g, GLubyte b, GLubyte a = 255)
         : red(r / 255.0), green(g / 255.0), blue(b / 255.0), alpha(a / 255.0) {}
-    RGBColor(GLdouble r, GLdouble g, GLdouble b, GLdouble a = 1.0)
+    Color(GLdouble r, GLdouble g, GLdouble b, GLdouble a = 1.0)
         : red(r), green(g), blue(b), alpha(a) {}
-    RGBColor(HexColor hex);
-    RGBColor(const std::string_view color_name);
-    RGBColor(const char* color_name) : RGBColor(std::string_view{color_name}) {}
+    Color(HexColor hex);
+    Color(const std::string_view color_name);
+    Color(const char* color_name) : Color(std::string_view{color_name}) {}
 };
 
 namespace themes {
@@ -110,13 +110,13 @@ inline Palette current_theme = DEFAULT;
 
 }  // namespace themes
 
-inline RGBColor::RGBColor(HexColor hex) {
+inline Color::Color(HexColor hex) {
     red = ((hex.hex >> 16) & 0xFF) / 255.0;
     green = ((hex.hex >> 8) & 0xFF) / 255.0;
     blue = (hex.hex & 0xFF) / 255.0;
 }
 
-inline RGBColor::RGBColor(const std::string_view color_name) {
+inline Color::Color(const std::string_view color_name) {
     using namespace themes;
     std::string name{color_name};
     if (name == "foreground") {
@@ -131,32 +131,32 @@ inline RGBColor::RGBColor(const std::string_view color_name) {
     if (color_enum.has_value()) {
         auto color = color_enum.value();
         unsigned int hex = current_theme.palette[static_cast<int>(color)];
-        *this = RGBColor(HexColor{hex});
+        *this = Color(HexColor{hex});
     } else {
         throw std::runtime_error(fmt::format("Unknown color name: {}", color_name));
     }
 }
 
-inline auto mix(RGBColor c1, RGBColor c2, double t) -> RGBColor {
+inline auto mix(Color c1, Color c2, double t) -> Color {
     t = std::max(0.0, std::min(1.0, t));
     GLdouble r = (c1.red * (1.0 - t) + c2.red * t);
     GLdouble g = (c1.green * (1.0 - t) + c2.green * t);
     GLdouble b = (c1.blue * (1.0 - t) + c2.blue * t);
     GLdouble a = (c1.alpha * (1.0 - t) + c2.alpha * t);
-    return RGBColor{r, g, b, a};
+    return Color{r, g, b, a};
 }
 
 }  // namespace opengl
 
 namespace fmt {
 
-template <> struct formatter<opengl::RGBColor> {
+template <> struct formatter<opengl::Color> {
     constexpr auto parse(fmt::format_parse_context& ctx) -> decltype(ctx.begin()) {
         return ctx.begin();
     }
 
     template <typename FormatContext>
-    auto format(const opengl::RGBColor& c, FormatContext& ctx) const -> decltype(ctx.out()) {
+    auto format(const opengl::Color& c, FormatContext& ctx) const -> decltype(ctx.out()) {
         return fmt::format_to(
             ctx.out(), "RGBColor({}, {}, {})", (uint8_t)(c.red * 255), (uint8_t)(c.green * 255),
             (uint8_t)(c.blue * 255));

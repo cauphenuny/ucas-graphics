@@ -36,7 +36,7 @@ struct TriangleEntity;
 struct Line {
     Vertex2d start;
     Vertex2d end;
-    RGBColor color{"foreground"};
+    Color color{"foreground"};
     double stroke{1.0};
     using EntityType = LineEntity;
 };
@@ -58,8 +58,8 @@ struct Triangle {
     Vertex2d p1;
     Vertex2d p2;
     Vertex2d p3;
-    RGBColor color{0.0, 0.0, 0.0};       // stroke color
-    RGBColor fill_color{0.0, 0.0, 0.0};  // fill color
+    Color color{0.0, 0.0, 0.0};       // stroke color
+    Color fill_color{0.0, 0.0, 0.0};  // fill color
     bool filled{true};
     double stroke{1.0};
     using EntityType = TriangleEntity;
@@ -91,8 +91,8 @@ struct CircleEntity;
 struct Circle {
     Vertex2d center;
     double radius;
-    RGBColor color{"foreground"};       // stroke color
-    RGBColor fill_color{"foreground"};  // fill color
+    Color color{"foreground"};       // stroke color
+    Color fill_color{"foreground"};  // fill color
     bool filled{true};
     double stroke{1.0};
     using EntityType = CircleEntity;
@@ -123,7 +123,7 @@ struct Arc {
     double radius;
     double start_deg;
     double sweep_deg;
-    RGBColor color{"foreground"};
+    Color color{"foreground"};
     using EntityType = ArcEntity;
 };
 
@@ -148,8 +148,8 @@ struct Rectangle {
     double height;
     bool is_round{false};
     double corner_radius{0.0};
-    RGBColor color{"foreground"};       // stroke color
-    RGBColor fill_color{"foreground"};  // fill color
+    Color color{"foreground"};       // stroke color
+    Color fill_color{"foreground"};  // fill color
     bool filled{true};
     double stroke{1.0};
     using EntityType = RectangleEntity;

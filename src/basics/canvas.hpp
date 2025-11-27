@@ -24,7 +24,7 @@ struct CanvasParameters {
     struct {
         int width{800}, height{800};
     } display_size;
-    RGBColor background{"background"};
+    Color background{"background"};
     struct {
         GLdouble left{-5}, right{5}, bottom{-5}, top{5};
         GLdouble zNear{5}, zFar{15};

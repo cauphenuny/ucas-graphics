@@ -18,11 +18,11 @@ namespace opengl::draw {
 
 inline constexpr double kLineWidthScale = 0.03;
 
-inline void rect_filled(const opengl::Vertex2d& center, double w, double h, opengl::RGBColor color);
+inline void rect_filled(const opengl::Vertex2d& center, double w, double h, opengl::Color color);
 inline void
-circle_filled(const opengl::Vertex2d& center, double radius, opengl::RGBColor color, int segments);
+circle_filled(const opengl::Vertex2d& center, double radius, opengl::Color color, int segments);
 
-inline void line(Vertex2d start, Vertex2d end, RGBColor color, double width = 1.0) {
+inline void line(Vertex2d start, Vertex2d end, Color color, double width = 1.0) {
     double scaled_width = width * kLineWidthScale;
     if (scaled_width <= 0.0) {
         return;
@@ -62,7 +62,7 @@ inline void append_point(std::vector<Vertex2d>& points, const Vertex2d& point) {
 }
 
 inline void
-draw_polyline(const std::vector<Vertex2d>& points, bool closed, RGBColor color, double width) {
+draw_polyline(const std::vector<Vertex2d>& points, bool closed, Color color, double width) {
     if (points.size() < 2) {
         return;
     }
@@ -85,7 +85,7 @@ draw_polyline(const std::vector<Vertex2d>& points, bool closed, RGBColor color, 
 
 }  // namespace detail
 
-inline void triangle(Vertex2d p1, Vertex2d p2, Vertex2d p3, RGBColor color) {
+inline void triangle(Vertex2d p1, Vertex2d p2, Vertex2d p3, Color color) {
     // spdlog::info("Drawing triangle with vertices: {}, {}, {}", p1, p2, p3);
     glColor3d(color.red, color.green, color.blue);
     glBegin(GL_TRIANGLES);
@@ -96,7 +96,7 @@ inline void triangle(Vertex2d p1, Vertex2d p2, Vertex2d p3, RGBColor color) {
 }
 
 inline void
-triangle_outline(Vertex2d p1, Vertex2d p2, Vertex2d p3, RGBColor color, double line_width = 1.0) {
+triangle_outline(Vertex2d p1, Vertex2d p2, Vertex2d p3, Color color, double line_width = 1.0) {
     std::vector<Vertex2d> points;
     points.reserve(3);
     points.emplace_back(p1);
@@ -108,7 +108,7 @@ triangle_outline(Vertex2d p1, Vertex2d p2, Vertex2d p3, RGBColor color, double l
 // 画圆（描边）
 // center: 圆心, radius: 半径, color: 颜色, segments: 分段数（越大越圆）
 inline void circle_outline(
-    const opengl::Vertex2d& center, double radius, opengl::RGBColor color, int segments = 64,
+    const opengl::Vertex2d& center, double radius, opengl::Color color, int segments = 64,
     double line_stroke = 1.0) {
     if (radius <= 0.0) {
         return;
@@ -127,7 +127,7 @@ inline void circle_outline(
 
 // 画填充圆（triangle fan）
 inline void circle_filled(
-    const opengl::Vertex2d& center, double radius, opengl::RGBColor color, int segments = 64) {
+    const opengl::Vertex2d& center, double radius, opengl::Color color, int segments = 64) {
     glColor3d(color.red, color.green, color.blue);
     glBegin(GL_TRIANGLE_FAN);
     glVertex2d(center.x, center.y);  // 中心点
@@ -144,7 +144,7 @@ inline void circle_filled(
 // start_deg, sweep_deg 以度为单位，positive 是逆时针 (标准数学方向)
 inline void arc_outline(
     const opengl::Vertex2d& center, double radius, double start_deg, double sweep_deg,
-    opengl::RGBColor color, int segments = 64, double line_stroke = 1.0) {
+    opengl::Color color, int segments = 64, double line_stroke = 1.0) {
     if (radius <= 0.0 || sweep_deg == 0.0) {
         return;
     }
@@ -163,8 +163,7 @@ inline void arc_outline(
     detail::draw_polyline(points, false, color, line_stroke);
 }
 
-inline void
-rect_filled(const opengl::Vertex2d& center, double w, double h, opengl::RGBColor color) {
+inline void rect_filled(const opengl::Vertex2d& center, double w, double h, opengl::Color color) {
     glColor3d(color.red, color.green, color.blue);
     glBegin(GL_QUADS);
     double half_w = w * 0.5;
@@ -177,7 +176,7 @@ rect_filled(const opengl::Vertex2d& center, double w, double h, opengl::RGBColor
 }
 
 inline void rect_outline(
-    const opengl::Vertex2d& center, double w, double h, opengl::RGBColor color,
+    const opengl::Vertex2d& center, double w, double h, opengl::Color color,
     double line_stroke = 1.0) {
     double half_w = w * 0.5;
     double half_h = h * 0.5;
@@ -193,7 +192,7 @@ inline void rect_outline(
 // 画带圆角的矩形（填充）
 // x,y 为矩形中心，w,h 为宽高，r 为圆角半径（不要超过 min(w,h)/2）
 inline void rounded_rect_filled(
-    const opengl::Vertex2d& center, double w, double h, double r, opengl::RGBColor color,
+    const opengl::Vertex2d& center, double w, double h, double r, opengl::Color color,
     int corner_segments = 16) {
     // 保证半径不超限
     r = std::max(0.0, std::min(r, std::min(w, h) * 0.5));
@@ -267,7 +266,7 @@ inline void rounded_rect_filled(
 // 圆角矩形描边（只画外圈）
 // 描边用 GL_LINE_STRIP 组合四段弧和四段直线
 inline void rounded_rect_outline(
-    const opengl::Vertex2d& center, double w, double h, double r, opengl::RGBColor color,
+    const opengl::Vertex2d& center, double w, double h, double r, opengl::Color color,
     int corner_segments = 16, double line_stroke = 1.0) {
     r = std::max(0.0, std::min(r, std::min(w, h) * 0.5));
     double half_w = w * 0.5, half_h = h * 0.5;
