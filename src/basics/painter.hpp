@@ -14,7 +14,6 @@
 #include <memory>
 #include <optional>
 #include <spdlog/spdlog.h>
-#include <stack>
 #include <string>
 #include <utility>
 #include <vector>
@@ -206,7 +205,6 @@ private:
     std::vector<std::unique_ptr<LineEntity>> segments;
     std::unique_ptr<LineEntity> preview_segment;
     std::unique_ptr<RectangleEntity> preview_rectangle;
-    std::stack<std::unique_ptr<Entity>> drawn_entities;
 
     std::optional<Vertex2d> rect_first_corner;
     std::optional<Vertex2d> rect_second_corner;
@@ -243,25 +241,45 @@ private:
     std::vector<double> radius_options{0.0, 0.1, 0.3, 0.5, 1.0, 1.5};
     std::size_t corner_radius_index{0};
 
+    struct HistoryEntry {
+        std::unique_ptr<Entity> entity;
+        int priority;
+    };
+
+    std::vector<HistoryEntry> drawn_entities;
+    static constexpr int kCommittedPriorityStep = 10;
+    static constexpr int kWorkingPriorityBase = 1000000;
+    int next_priority{10000};
+    int working_priority_counter{0};
+
     Color preview_color{mix("foreground", "background", 0.8)};
+
+    [[nodiscard]] auto allocate_committed_priority() -> int {
+        int priority = next_priority;
+        next_priority += kCommittedPriorityStep;
+        return priority;
+    }
+
+    [[nodiscard]] auto allocate_working_priority() -> int {
+        return kWorkingPriorityBase + working_priority_counter++;
+    }
 
     void push_committed_entity(std::unique_ptr<Entity> entity) {
         if (!entity) {
             return;
         }
-        entity->set_priority(90000);
-        drawn_entities.push(std::move(entity));
+        int priority = allocate_committed_priority();
+        entity->set_priority(priority);
+        drawn_entities.push_back(HistoryEntry{std::move(entity), priority});
     }
 
     void replace_top_entity(std::unique_ptr<Entity> entity) {
-        if (!entity) {
+        if (!entity || drawn_entities.empty()) {
             return;
         }
-        entity->set_priority(90000);
-        if (!drawn_entities.empty()) {
-            drawn_entities.pop();
-        }
-        drawn_entities.push(std::move(entity));
+        int priority = drawn_entities.back().priority;
+        entity->set_priority(priority);
+        drawn_entities.back().entity = std::move(entity);
     }
 
     void undo_last_shape() {
@@ -269,7 +287,7 @@ private:
             spdlog::info("undo requested but history is empty");
             return;
         }
-        drawn_entities.pop();
+        drawn_entities.pop_back();
         committed_polygon.clear();
         committed_rectangle.reset();
         last_committed_shape = ShapeType::Polygon;
@@ -440,7 +458,9 @@ private:
             .color = current_stroke_color(),
             .stroke = current_stroke_width(),
         };
-        segments.push_back(canvas->draw(seg));
+        auto segment_entity = canvas->draw(seg);
+        segment_entity->set_priority(allocate_working_priority());
+        segments.push_back(std::move(segment_entity));
     }
 
     void update_polygon_preview(const Vertex2d& current) {
@@ -456,7 +476,7 @@ private:
                 .stroke = current_stroke_width(),
             };
             preview_segment = canvas->draw(seg);
-            preview_segment->set_priority(100000);
+            preview_segment->set_priority(allocate_working_priority());
         } else {
             preview_segment->config.start = polygon_points.back();
             preview_segment->config.end = current;
@@ -525,7 +545,7 @@ private:
         };
         if (!preview_rectangle) {
             preview_rectangle = canvas->draw(rect);
-            preview_rectangle->set_priority(100000);
+            preview_rectangle->set_priority(allocate_working_priority());
         } else {
             preview_rectangle->config.center = center;
             preview_rectangle->config.width = width;
