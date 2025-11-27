@@ -14,6 +14,7 @@
 #include <memory>
 #include <optional>
 #include <spdlog/spdlog.h>
+#include <stack>
 #include <string>
 #include <utility>
 #include <vector>
@@ -142,6 +143,10 @@ struct Painter : ActionHandler {
             } else if (state == State::DrawRectangle) {
                 finalize_rectangle();
             }
+            return;
+        }
+        if (key == GLFW_KEY_BACKSPACE) {
+            undo_last_shape();
         }
     }
 
@@ -201,7 +206,7 @@ private:
     std::vector<std::unique_ptr<LineEntity>> segments;
     std::unique_ptr<LineEntity> preview_segment;
     std::unique_ptr<RectangleEntity> preview_rectangle;
-    std::unique_ptr<Entity> committed_shape;
+    std::stack<std::unique_ptr<Entity>> drawn_entities;
 
     std::optional<Vertex2d> rect_first_corner;
     std::optional<Vertex2d> rect_second_corner;
@@ -239,6 +244,37 @@ private:
     std::size_t corner_radius_index{0};
 
     Color preview_color{mix("foreground", "background", 0.8)};
+
+    void push_committed_entity(std::unique_ptr<Entity> entity) {
+        if (!entity) {
+            return;
+        }
+        entity->set_priority(90000);
+        drawn_entities.push(std::move(entity));
+    }
+
+    void replace_top_entity(std::unique_ptr<Entity> entity) {
+        if (!entity) {
+            return;
+        }
+        entity->set_priority(90000);
+        if (!drawn_entities.empty()) {
+            drawn_entities.pop();
+        }
+        drawn_entities.push(std::move(entity));
+    }
+
+    void undo_last_shape() {
+        if (drawn_entities.empty()) {
+            spdlog::info("undo requested but history is empty");
+            return;
+        }
+        drawn_entities.pop();
+        committed_polygon.clear();
+        committed_rectangle.reset();
+        last_committed_shape = ShapeType::Polygon;
+        close_menu();
+    }
 
     void ensure_menu_layer() {
         if (menu_layer || !canvas) {
@@ -441,7 +477,7 @@ private:
         add_segment(polygon_points.back(), polygon_points.front());
         committed_polygon = polygon_points;
         last_committed_shape = ShapeType::Polygon;
-        rebuild_committed_shape();
+        rebuild_committed_shape(/*replace_existing=*/false);
         open_shape_menu();
         cancel_polygon();
     }
@@ -508,7 +544,7 @@ private:
         }
         committed_rectangle = RectangleDraft{*rect_first_corner, *rect_second_corner};
         last_committed_shape = ShapeType::Rectangle;
-        rebuild_committed_shape();
+        rebuild_committed_shape(/*replace_existing=*/false);
         open_shape_menu();
         cancel_rectangle();
     }
@@ -522,14 +558,28 @@ private:
 
     void clear_segments() { segments.clear(); }
 
-    void rebuild_committed_shape() {
-        committed_shape.reset();
-        if (!canvas) {
+    void rebuild_committed_shape(bool replace_existing = true) {
+        if (replace_existing && drawn_entities.empty()) {
             return;
+        }
+        auto entity = build_committed_entity();
+        if (!entity) {
+            return;
+        }
+        if (replace_existing) {
+            replace_top_entity(std::move(entity));
+        } else {
+            push_committed_entity(std::move(entity));
+        }
+    }
+
+    std::unique_ptr<Entity> build_committed_entity() {
+        if (!canvas) {
+            return nullptr;
         }
         if (last_committed_shape == ShapeType::Polygon) {
             if (committed_polygon.size() < 3) {
-                return;
+                return nullptr;
             }
             Polygon poly{
                 .points = committed_polygon,
@@ -537,8 +587,9 @@ private:
                 .fill_color = current_fill_color(),
                 .stroke = current_stroke_width(),
             };
-            committed_shape = canvas->draw(poly);
-        } else if (last_committed_shape == ShapeType::Rectangle && committed_rectangle) {
+            return canvas->draw(poly);
+        }
+        if (last_committed_shape == ShapeType::Rectangle && committed_rectangle) {
             Vertex2d first = committed_rectangle->first;
             Vertex2d second = committed_rectangle->second;
             Vertex2d center{(first.x + second.x) * 0.5, (first.y + second.y) * 0.5};
@@ -553,11 +604,9 @@ private:
                 .fill_color = current_fill_color(),
                 .stroke = current_stroke_width(),
             };
-            committed_shape = canvas->draw(rect);
+            return canvas->draw(rect);
         }
-        if (committed_shape) {
-            committed_shape->set_priority(90000);
-        }
+        return nullptr;
     }
 
     Vertex2d canvas_center() const {
