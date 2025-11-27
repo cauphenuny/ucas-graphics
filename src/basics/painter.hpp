@@ -152,19 +152,23 @@ struct Painter : ActionHandler {
         if (action != GLFW_PRESS) {
             return;
         }
-        double xpos = 0.0, ypos = 0.0;
-        glfwGetCursorPos(canvas->window, &xpos, &ypos);
-        Vertex2d world = cursor_to_world(xpos, ypos);
-        last_cursor_world = world;
-        if (menu_state.visible) {
-            if (!handle_menu_click(world)) {
-                close_menu();
+        if (button == GLFW_MOUSE_BUTTON_LEFT) {
+            double xpos = 0.0, ypos = 0.0;
+            glfwGetCursorPos(canvas->window, &xpos, &ypos);
+            Vertex2d world = cursor_to_world(xpos, ypos);
+            last_cursor_world = world;
+            if (menu_state.visible) {
+                if (!handle_menu_click(world)) {
+                    close_menu();
+                }
+                return;
             }
-            return;
-        }
-        ensure_current_draft();
-        if (current_draft) {
-            current_draft->on_mouse_button(button, action, mods, world);
+            ensure_current_draft();
+            if (current_draft) {
+                current_draft->on_mouse_button(button, action, mods, world);
+            }
+        } else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+            this->on_key(GLFW_KEY_ESCAPE, GLFW_PRESS);
         }
     }
 
@@ -295,7 +299,11 @@ private:
                 .shape = commit_info.shape_type,
                 .rebuild = std::move(commit_info.rebuild),
             });
-        open_shape_menu();
+        if (has_shape_specific_options(commit_info.shape_type)) {
+            open_shape_menu();
+        } else if (menu_state.kind == MenuKind::ShapeSpecific) {
+            close_menu();
+        }
     }
 
     void refresh_active_draft_style() {
@@ -441,9 +449,6 @@ private:
                                          refresh_menu_items();
                                      }});
         }
-        if (items.empty()) {
-            items.push_back(MenuItem{.label = "No extra options", .action = []() {}});
-        }
         return items;
     }
 
@@ -457,6 +462,10 @@ private:
     bool shape_supports_fill(ShapeType shape) const {
         return shape == ShapeType::Polygon || shape == ShapeType::Rectangle ||
                shape == ShapeType::Circle;
+    }
+
+    bool has_shape_specific_options(ShapeType shape) const {
+        return shape_supports_fill(shape) || shape == ShapeType::Rectangle;
     }
 
     void cycle_shape_type() {
