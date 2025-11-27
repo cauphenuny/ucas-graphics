@@ -3,6 +3,7 @@
 #include "color.hpp"
 #include "coord.hpp"
 
+#include <GLUT/glut.h>
 #include <OpenGL/gl.h>
 #include <OpenGL/gltypes.h>
 #include <algorithm>
@@ -12,6 +13,8 @@
 #include <limits>
 #include <magic_enum/magic_enum.hpp>
 #include <numbers>
+#include <ranges>
+#include <string>
 #include <vector>
 
 namespace opengl::draw {
@@ -303,6 +306,41 @@ inline void rounded_rect_outline(
     append_arc(c1, 0.0);  // top-right arc (0 -> 90)
 
     detail::draw_polyline(points, true, color, line_stroke);
+}
+
+inline void text(
+    const opengl::Vertex2d& origin, const std::string& content, opengl::Color color,
+    double scale = 1.0) {
+    if (content.empty()) {
+        return;
+    }
+    double normalized_scale = std::max(0.001, 0.0027 * scale);
+    float line_width = std::max(1.0f, static_cast<float>(2.0 * scale));
+    glPushMatrix();
+    glColor3d(color.red, color.green, color.blue);
+    glTranslated(origin.x, origin.y, 0.0);
+    glScaled(normalized_scale, normalized_scale, 1.0);
+    // set a thicker line width for stroke font rendering
+    glLineWidth(line_width);
+    // draw multiple passes with symmetric offsets to thicken strokes without shifting position
+    const double offset = 3.0;  // in stroke-font units (before scaling)
+    const double step = 0.3;
+    auto offsets =
+        std::views::iota(-static_cast<int>(offset / step), static_cast<int>(offset / step) + 1) |
+        std::views::transform([step](int idx) { return static_cast<double>(idx) * step; });
+    for (double ox : {0}) {
+        for (double oy : {0}) {
+            glPushMatrix();
+            glTranslated(ox, oy, 0.0);
+            for (unsigned char ch : content) {
+                glutStrokeCharacter(GLUT_STROKE_ROMAN, ch);
+            }
+            glPopMatrix();
+        }
+    }
+    // restore default line width
+    glLineWidth(1.0f);
+    glPopMatrix();
 }
 
 }  // namespace opengl::draw

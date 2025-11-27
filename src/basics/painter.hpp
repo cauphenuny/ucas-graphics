@@ -1,33 +1,125 @@
 #pragma once
 #include "canvas.hpp"
 #include "coord.hpp"
+#include "draw.hpp"
 #include "entity.hpp"
 
 #include <GLUT/glut.h>
 #include <OpenGL/gl.h>
+#include <cmath>
+#include <fmt/format.h>
+#include <functional>
 #include <glfw/glfw3.h>
+#include <magic_enum/magic_enum.hpp>
 #include <memory>
+#include <optional>
 #include <spdlog/spdlog.h>
+#include <string>
+#include <utility>
 #include <vector>
 
 namespace opengl {
 
 namespace painting {
 
+struct MenuItem {
+    std::string label;
+    std::function<void()> action;
+    Vertex2d top_left{0.0, 0.0};
+    Vertex2d bottom_right{0.0, 0.0};
+
+    [[nodiscard]] bool contains(const Vertex2d& point) const {
+        return point.x >= top_left.x && point.x <= bottom_right.x && point.y <= top_left.y &&
+               point.y >= bottom_right.y;
+    }
+};
+
+enum class MenuKind { None, Main, ShapeSpecific };
+
+struct MenuState {
+    MenuKind kind{MenuKind::None};
+    bool visible{false};
+    Vertex2d anchor{0.0, 0.0};
+    double width{4.0};
+    double item_height{0.8};
+    double padding{0.2};
+    std::vector<MenuItem> items;
+
+    void layout() {
+        double overall_height =
+            items.empty() ? 0.0
+                          : (static_cast<double>(items.size()) * (item_height + padding) - padding);
+        double left = anchor.x - width * 0.5;
+        double first_top = anchor.y + overall_height * 0.5;
+        for (std::size_t i = 0; i < items.size(); ++i) {
+            auto& item = items[i];
+            double top = first_top - static_cast<double>(i) * (item_height + padding);
+            double bottom = top - item_height;
+            item.top_left = Vertex2d{left, top};
+            item.bottom_right = Vertex2d{left + width, bottom};
+        }
+    }
+};
+
+struct MenuOverlayEntity;
+
+struct MenuOverlay {
+    const MenuState* state{nullptr};
+    Color panel_color{mix("foreground", "background", 0.8)};
+    Color border_color{"foreground"};
+    Color text_color{"foreground"};
+    Color item_color{"background"};
+    using EntityType = MenuOverlayEntity;
+};
+
+struct MenuOverlayEntity : Entity {
+    MenuOverlay config;
+    MenuOverlayEntity(Canvas* canvas, MenuOverlay config);
+    void draw() const override;
+    std::string repr() const override;
+};
+
+inline MenuOverlayEntity::MenuOverlayEntity(Canvas* canvas, MenuOverlay config)
+    : Entity(canvas), config(std::move(config)) {}
+
+inline void MenuOverlayEntity::draw() const {
+    if (!config.state || !config.state->visible) {
+        return;
+    }
+    const auto& state = *config.state;
+    if (state.items.empty()) {
+        return;
+    }
+    double overall_height =
+        state.items.empty()
+            ? 0.0
+            : (static_cast<double>(state.items.size()) * (state.item_height + state.padding) -
+               state.padding);
+    Vertex2d panel_center{state.anchor.x, state.anchor.y};
+    draw::rect_filled(
+        panel_center, state.width + state.padding * 2.0, overall_height + state.padding * 2.0,
+        config.panel_color);
+    draw::rect_outline(
+        panel_center, state.width + state.padding * 2.0, overall_height + state.padding * 2.0,
+        config.border_color, 0.5);
+
+    for (const auto& item : state.items) {
+        double rect_width = item.bottom_right.x - item.top_left.x;
+        double rect_height = item.top_left.y - item.bottom_right.y;
+        Vertex2d rect_center{
+            item.top_left.x + rect_width * 0.5, item.bottom_right.y + rect_height * 0.5};
+        draw::rect_filled(rect_center, rect_width, rect_height, config.item_color);
+        draw::rect_outline(rect_center, rect_width, rect_height, config.border_color, 0.4);
+        Vertex2d text_pos{item.top_left.x + 0.2, rect_center.y};
+        draw::text(text_pos, item.label, config.text_color, 0.7);
+    }
+}
+
+inline std::string MenuOverlayEntity::repr() const { return "MenuOverlay"; }
+
 struct Painter : ActionHandler {
-
-    enum class State {
-        IDLE,
-        DRAW_POLY,
-    };
-
-    std::vector<Vertex2d> points;
-    std::vector<std::unique_ptr<LineEntity>> segments;
-    std::unique_ptr<LineEntity> preview_segment;
-    State state{State::IDLE};
-    Color stroke_color{"bright_red"};
-    Color preview_color{"bright_yellow"};
-    double stroke_width{2.0};
+    enum class ShapeType { Polygon, Rectangle };
+    enum class State { Idle, DrawPolygon, DrawRectangle };
 
     Painter() = default;
 
@@ -36,8 +128,20 @@ struct Painter : ActionHandler {
         if (action != GLFW_PRESS) {
             return;
         }
+        if (key == GLFW_KEY_SPACE && state == State::Idle) {
+            open_main_menu();
+            return;
+        }
         if (key == GLFW_KEY_ESCAPE) {
-            close_polygon();
+            if (menu_state.visible) {
+                close_menu();
+                return;
+            }
+            if (state == State::DrawPolygon) {
+                finalize_polygon();
+            } else if (state == State::DrawRectangle) {
+                finalize_rectangle();
+            }
         }
     }
 
@@ -53,80 +157,420 @@ struct Painter : ActionHandler {
         }
         double xpos = 0.0, ypos = 0.0;
         glfwGetCursorPos(canvas->window, &xpos, &ypos);
-        add_point(cursor_to_world(xpos, ypos));
+        Vertex2d world = cursor_to_world(xpos, ypos);
+        last_cursor_world = world;
+        if (menu_state.visible) {
+            if (!handle_menu_click(world)) {
+                close_menu();
+            }
+            return;
+        }
+        if (active_shape == ShapeType::Polygon) {
+            add_polygon_point(world);
+        } else {
+            handle_rectangle_click(world);
+        }
     }
 
     void on_mouse_move(double xpos, double ypos) override {
-        // spdlog::info("painter received mouse move event: xpos={}, ypos={}", xpos, ypos);
         if (!canvas) {
             return;
         }
-        update_preview(cursor_to_world(xpos, ypos));
+        last_cursor_world = cursor_to_world(xpos, ypos);
+        if (state == State::DrawPolygon) {
+            update_polygon_preview(last_cursor_world);
+        } else if (state == State::DrawRectangle) {
+            update_rectangle_preview();
+        }
     }
 
 private:
-    void add_point(const Vertex2d& point) {
-        if (state == State::IDLE) {
-            points.clear();
-            state = State::DRAW_POLY;
-            spdlog::info(
-                "from {} to {}", magic_enum::enum_name<State>(State::IDLE),
-                magic_enum::enum_name<State>(State::DRAW_POLY));
+    struct RectangleDraft {
+        Vertex2d first;
+        Vertex2d second;
+    };
+
+    State state{State::Idle};
+    ShapeType active_shape{ShapeType::Polygon};
+    ShapeType last_committed_shape{ShapeType::Polygon};
+
+    std::vector<Vertex2d> polygon_points;
+    std::vector<Vertex2d> committed_polygon;
+    std::optional<RectangleDraft> committed_rectangle;
+
+    std::vector<std::unique_ptr<LineEntity>> segments;
+    std::unique_ptr<LineEntity> preview_segment;
+    std::unique_ptr<RectangleEntity> preview_rectangle;
+    std::unique_ptr<Entity> committed_shape;
+
+    std::optional<Vertex2d> rect_first_corner;
+    std::optional<Vertex2d> rect_second_corner;
+
+    MenuState menu_state;
+    std::unique_ptr<MenuOverlayEntity> menu_layer;
+
+    Vertex2d last_cursor_world{0.0, 0.0};
+
+    std::vector<std::string> stroke_palette{
+        "bright_red", "bright_green", "bright_magenta", "bright_cyan"};
+    std::size_t stroke_color_index{0};
+    std::vector<double> stroke_width_options{1.0, 2.0, 3.5, 5.0};
+    std::size_t stroke_width_index{1};
+    std::vector<std::optional<std::string>> fill_palette{
+        std::nullopt, std::string{"bright_yellow"}, std::string{"bright_green"},
+        std::string{"bright_cyan"}};
+    std::size_t fill_color_index{0};
+    std::vector<double> radius_options{0.0, 0.5, 1.0, 1.5};
+    std::size_t corner_radius_index{0};
+
+    Color preview_color{"bright_yellow"};
+
+    void ensure_menu_layer() {
+        if (menu_layer || !canvas) {
+            return;
         }
-        spdlog::info("adding point to polygon: {}", point);
-        points.push_back(point);
-        if (points.size() >= 2) {
-            add_segment(points[points.size() - 2], points.back());
+        MenuOverlay overlay{
+            .state = &menu_state,
+        };
+        menu_layer = canvas->draw(overlay);
+        menu_layer->set_priority(200000);
+    }
+
+    void open_main_menu() {
+        ensure_menu_layer();
+        menu_state.kind = MenuKind::Main;
+        menu_state.anchor = menu_anchor();
+        menu_state.visible = true;
+        menu_state.items = build_main_menu_items();
+        menu_state.layout();
+    }
+
+    void open_shape_menu() {
+        ensure_menu_layer();
+        menu_state.kind = MenuKind::ShapeSpecific;
+        menu_state.anchor = menu_anchor();
+        menu_state.visible = true;
+        menu_state.items = build_shape_menu_items();
+        menu_state.layout();
+    }
+
+    void close_menu() {
+        menu_state.visible = false;
+        menu_state.items.clear();
+        menu_state.kind = MenuKind::None;
+    }
+
+    bool handle_menu_click(const Vertex2d& world) {
+        if (!menu_state.visible) {
+            return false;
         }
-        clear_preview();
+        for (auto& item : menu_state.items) {
+            if (item.contains(world)) {
+                if (item.action) {
+                    item.action();
+                }
+                refresh_menu_items();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void refresh_menu_items() {
+        if (!menu_state.visible) {
+            return;
+        }
+        if (menu_state.kind == MenuKind::Main) {
+            menu_state.items = build_main_menu_items();
+        } else if (menu_state.kind == MenuKind::ShapeSpecific) {
+            menu_state.items = build_shape_menu_items();
+        }
+        menu_state.layout();
+    }
+
+    std::vector<MenuItem> build_main_menu_items() {
+        std::vector<MenuItem> items;
+        auto shape_label = fmt::format("Shape: {}", magic_enum::enum_name(active_shape));
+        items.push_back(
+            MenuItem{
+                .label = shape_label,
+                .action = [this]() { cycle_shape_type(); },
+            });
+        auto stroke_label = fmt::format("Stroke color: {}", stroke_palette[stroke_color_index]);
+        items.push_back(
+            MenuItem{
+                .label = stroke_label,
+                .action = [this]() { cycle_stroke_color(); },
+            });
+        auto width_label =
+            fmt::format("Stroke width: {:.1f}", stroke_width_options[stroke_width_index]);
+        items.push_back(
+            MenuItem{
+                .label = width_label,
+                .action = [this]() { cycle_stroke_width(); },
+            });
+        return items;
+    }
+
+    std::vector<MenuItem> build_shape_menu_items() {
+        std::vector<MenuItem> items;
+        auto fill_label = fill_palette[fill_color_index].has_value()
+                              ? fmt::format("Fill: {}", *fill_palette[fill_color_index])
+                              : std::string{"Fill: none"};
+        items.push_back(
+            MenuItem{
+                .label = fill_label,
+                .action =
+                    [this]() {
+                        cycle_fill_color();
+                        rebuild_committed_shape();
+                    },
+            });
+        if (last_committed_shape == ShapeType::Rectangle) {
+            auto radius_label =
+                fmt::format("Corner radius: {:.2f}", radius_options[corner_radius_index]);
+            items.push_back(
+                MenuItem{
+                    .label = radius_label,
+                    .action =
+                        [this]() {
+                            cycle_corner_radius();
+                            rebuild_committed_shape();
+                        },
+                });
+        }
+        return items;
+    }
+
+    void cycle_shape_type() {
+        active_shape =
+            (active_shape == ShapeType::Polygon) ? ShapeType::Rectangle : ShapeType::Polygon;
+        state = State::Idle;
+        polygon_points.clear();
+        rect_first_corner.reset();
+        rect_second_corner.reset();
+        clear_segments();
+        clear_polygon_preview();
+        preview_rectangle.reset();
+    }
+
+    void cycle_stroke_color() {
+        stroke_color_index = (stroke_color_index + 1) % stroke_palette.size();
+        rebuild_committed_shape();
+    }
+
+    void cycle_stroke_width() {
+        stroke_width_index = (stroke_width_index + 1) % stroke_width_options.size();
+        rebuild_committed_shape();
+    }
+
+    void cycle_fill_color() { fill_color_index = (fill_color_index + 1) % fill_palette.size(); }
+
+    void cycle_corner_radius() {
+        corner_radius_index = (corner_radius_index + 1) % radius_options.size();
+    }
+
+    void add_polygon_point(const Vertex2d& point) {
+        if (state == State::Idle) {
+            polygon_points.clear();
+            state = State::DrawPolygon;
+        }
+        polygon_points.push_back(point);
+        if (polygon_points.size() >= 2) {
+            add_segment(polygon_points[polygon_points.size() - 2], polygon_points.back());
+        }
+        clear_polygon_preview();
     }
 
     void add_segment(const Vertex2d& start, const Vertex2d& end) {
         Line seg{
             .start = start,
             .end = end,
-            .color = stroke_color,
-            .stroke = stroke_width,
+            .color = current_stroke_color(),
+            .stroke = current_stroke_width(),
         };
         segments.push_back(canvas->draw(seg));
     }
 
-    void close_polygon() {
-        spdlog::info("closing polygon");
-        if (state != State::DRAW_POLY) {
-            return;
-        }
-        if (points.size() >= 2) {
-            add_segment(points.back(), points.front());
-        }
-        points.clear();
-        state = State::IDLE;
-        clear_preview();
-    }
-
-    void update_preview(const Vertex2d& current) {
-        if (state != State::DRAW_POLY || points.empty()) {
-            clear_preview();
+    void update_polygon_preview(const Vertex2d& current) {
+        if (state != State::DrawPolygon || polygon_points.empty()) {
+            clear_polygon_preview();
             return;
         }
         if (!preview_segment) {
             Line seg{
-                .start = points.back(),
+                .start = polygon_points.back(),
                 .end = current,
                 .color = preview_color,
-                .stroke = stroke_width,
+                .stroke = current_stroke_width(),
             };
             preview_segment = canvas->draw(seg);
             preview_segment->set_priority(100000);
         } else {
-            preview_segment->config.start = points.back();
+            preview_segment->config.start = polygon_points.back();
             preview_segment->config.end = current;
         }
     }
 
-    void clear_preview() { preview_segment.reset(); }
+    void clear_polygon_preview() { preview_segment.reset(); }
 
-    auto cursor_to_world(double xpos, double ypos) const -> Vertex2d {
+    void finalize_polygon() {
+        if (state != State::DrawPolygon) {
+            return;
+        }
+        if (polygon_points.size() < 3) {
+            spdlog::warn("polygon needs at least 3 points");
+            cancel_polygon();
+            return;
+        }
+        add_segment(polygon_points.back(), polygon_points.front());
+        committed_polygon = polygon_points;
+        last_committed_shape = ShapeType::Polygon;
+        rebuild_committed_shape();
+        open_shape_menu();
+        cancel_polygon();
+    }
+
+    void cancel_polygon() {
+        polygon_points.clear();
+        state = State::Idle;
+        clear_polygon_preview();
+        clear_segments();
+    }
+
+    void handle_rectangle_click(const Vertex2d& point) {
+        if (state == State::Idle) {
+            state = State::DrawRectangle;
+            rect_first_corner.reset();
+            rect_second_corner.reset();
+            preview_rectangle.reset();
+        }
+        if (!rect_first_corner) {
+            rect_first_corner = point;
+            return;
+        }
+        rect_second_corner = point;
+        update_rectangle_preview();
+    }
+
+    void update_rectangle_preview() {
+        if (state != State::DrawRectangle || !rect_first_corner) {
+            preview_rectangle.reset();
+            return;
+        }
+        Vertex2d second = rect_second_corner.value_or(last_cursor_world);
+        Vertex2d first = *rect_first_corner;
+        Vertex2d center{(first.x + second.x) * 0.5, (first.y + second.y) * 0.5};
+        double width = std::abs(second.x - first.x);
+        double height = std::abs(second.y - first.y);
+        Rectangle rect{
+            .center = center,
+            .width = width,
+            .height = height,
+            .corner_radius = 0.0,
+            .color = preview_color,
+            .fill_color = std::nullopt,
+            .stroke = 1.0,
+        };
+        if (!preview_rectangle) {
+            preview_rectangle = canvas->draw(rect);
+            preview_rectangle->set_priority(100000);
+        } else {
+            preview_rectangle->config.center = center;
+            preview_rectangle->config.width = width;
+            preview_rectangle->config.height = height;
+        }
+    }
+
+    void finalize_rectangle() {
+        if (state != State::DrawRectangle) {
+            return;
+        }
+        if (!rect_first_corner || !rect_second_corner) {
+            spdlog::warn("rectangle needs two corners");
+            cancel_rectangle();
+            return;
+        }
+        committed_rectangle = RectangleDraft{*rect_first_corner, *rect_second_corner};
+        last_committed_shape = ShapeType::Rectangle;
+        rebuild_committed_shape();
+        open_shape_menu();
+        cancel_rectangle();
+    }
+
+    void cancel_rectangle() {
+        rect_first_corner.reset();
+        rect_second_corner.reset();
+        preview_rectangle.reset();
+        state = State::Idle;
+    }
+
+    void clear_segments() { segments.clear(); }
+
+    void rebuild_committed_shape() {
+        committed_shape.reset();
+        if (!canvas) {
+            return;
+        }
+        if (last_committed_shape == ShapeType::Polygon) {
+            if (committed_polygon.size() < 3) {
+                return;
+            }
+            Polygon poly{
+                .points = committed_polygon,
+                .color = current_stroke_color(),
+                .fill_color = current_fill_color(),
+                .stroke = current_stroke_width(),
+            };
+            committed_shape = canvas->draw(poly);
+        } else if (last_committed_shape == ShapeType::Rectangle && committed_rectangle) {
+            Vertex2d first = committed_rectangle->first;
+            Vertex2d second = committed_rectangle->second;
+            Vertex2d center{(first.x + second.x) * 0.5, (first.y + second.y) * 0.5};
+            double width = std::abs(second.x - first.x);
+            double height = std::abs(second.y - first.y);
+            Rectangle rect{
+                .center = center,
+                .width = width,
+                .height = height,
+                .corner_radius = current_corner_radius(),
+                .color = current_stroke_color(),
+                .fill_color = current_fill_color(),
+                .stroke = current_stroke_width(),
+            };
+            committed_shape = canvas->draw(rect);
+        }
+        if (committed_shape) {
+            committed_shape->set_priority(90000);
+        }
+    }
+
+    Vertex2d canvas_center() const {
+        if (!canvas) {
+            return Vertex2d{0.0, 0.0};
+        }
+        const auto& proj = canvas->params.projection;
+        double cx = (proj.left + proj.right) * 0.5;
+        double cy = (proj.top + proj.bottom) * 0.5;
+        return Vertex2d{cx, cy};
+    }
+
+    Vertex2d menu_anchor() const { return canvas_center(); }
+
+    Color current_stroke_color() const { return Color{stroke_palette[stroke_color_index]}; }
+
+    double current_stroke_width() const { return stroke_width_options[stroke_width_index]; }
+
+    std::optional<Color> current_fill_color() const {
+        if (!fill_palette[fill_color_index]) {
+            return std::nullopt;
+        }
+        return Color{*fill_palette[fill_color_index]};
+    }
+
+    double current_corner_radius() const { return radius_options[corner_radius_index]; }
+
+    Vertex2d cursor_to_world(double xpos, double ypos) const {
         if (!canvas) {
             return Vertex2d{0.0, 0.0};
         }

@@ -15,6 +15,8 @@
 #include <spdlog/spdlog.h>
 #include <string>
 #include <sys/types.h>
+#include <utility>
+#include <vector>
 
 namespace opengl {
 
@@ -186,6 +188,42 @@ struct RectangleEntity : Entity {
             "Rectangle(center={}, width={}, height={}, corner_radius={}, color={}, fill_color={}, "
             "stroke={})",
             config.center, config.width, config.height, optional_repr(config.corner_radius),
+            config.color, optional_repr(config.fill_color), config.stroke);
+    }
+};
+
+struct PolygonEntity;
+
+struct Polygon {
+    std::vector<Vertex2d> points;
+    Color color{"foreground"};
+    std::optional<Color> fill_color{};
+    double stroke{1.0};
+    using EntityType = PolygonEntity;
+};
+
+struct PolygonEntity : Entity {
+    Polygon config;
+    PolygonEntity(Canvas* canvas, Polygon config) : Entity(canvas), config(std::move(config)) {}
+
+    void draw() const override {
+        if (config.points.size() < 2) {
+            return;
+        }
+        if (config.fill_color && config.points.size() >= 3) {
+            for (std::size_t i = 1; i + 1 < config.points.size(); ++i) {
+                draw::triangle(
+                    config.points[0], config.points[i], config.points[i + 1], *config.fill_color);
+            }
+        }
+        if (config.stroke > 0.0) {
+            draw::detail::draw_polyline(config.points, true, config.color, config.stroke);
+        }
+    }
+
+    std::string repr() const override {
+        return fmt::format(
+            "Polygon(points={}, color={}, fill_color={}, stroke={})", config.points.size(),
             config.color, optional_repr(config.fill_color), config.stroke);
     }
 };
