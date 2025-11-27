@@ -92,6 +92,23 @@ inline struct GlfwContext {
 通过 `Canvas` 类管理窗口和 OpenGL 上下文
 
 ```cpp
+struct CanvasParameters {
+    std::string title;
+    struct {
+        int width{800}, height{800};
+    } display_size;
+    Color background{"background"};
+    struct {
+        GLdouble left{-5}, right{5}, bottom{-5}, top{5};
+        GLdouble zNear{5}, zFar{15};
+    } projection;
+    struct {
+        GLdouble eyeX, eyeY, eyeZ;
+        GLdouble centerX, centerY, centerZ;
+        GLdouble upX, upY, upZ;
+    } view_point;
+};
+
 struct Canvas {
     const CanvasParameters params;
     GLFWwindow* window;
@@ -155,7 +172,7 @@ struct Canvas {
 
 图形绘制函数都在 `draw` 命名空间下，这个命名空间下的函数不负责保存图形状态，只负责绘制，图形状态由 `Entity` 保存（类似 `torch.nn.functional`）
 
-我发现直接画线的话线段的粗细不够，所以代码里都是用 rect 模拟线段的
+另外我发现直接画线的话线段的粗细不够，所以代码里都是用 rect 模拟线段的
 
 ```cpp
 // namespace draw
@@ -351,7 +368,7 @@ inline Entity::~Entity() {
 }
 ```
 
-如果 `Canvas` 先于 `Entity` 析构，也是安全的，因为只有 `Canvas` 会调用 `draw()`，唯一需要担心的问题是 `Entity` 内存泄露，但用 `std::unique_ptr` 可以解决这一问题。
+如果 `Canvas` 先于 `Entity` 析构，也是安全的，因为只有 `Canvas` 会调用 `draw()`，只要把 `Entity` 里面的 `container` 指针清了就行，唯一需要担心的问题是 `Entity` 内存泄露，但用 `std::unique_ptr` 可以解决这一问题。
 
 由于配置里面定义了实体类的类型 `using EntityType = LineEntity;`，所以可以通过模板函数 `Canvas::draw(some_config)` 来添加实体，不需要指定模版参数 `draw<SomeShape>(SomeShapeConfig(.key1 = ...))` 了
 
@@ -447,8 +464,114 @@ struct Rectangle {
 
 == 处理事件输入
 
+输入事件通过 `ActionHandler` 接口在 `Canvas` 和业务层之间传递。`Canvas::attach_handler` 会把一组 `GLFW` 回调绑定到当前窗口，同时把 `ActionHandler` 指针塞进 `glfwSetWindowUserPointer`，因此所有键盘/鼠标事件都会被转发到 `on_key`、`on_mouse_button`、`on_mouse_move`。
+
+```cpp
+struct ActionHandler {
+    virtual void on_key(int key, int action) = 0;
+    virtual void on_mouse_button(int button, int action, int mods) = 0;
+    virtual void on_mouse_move(double xpos, double ypos) = 0;
+    void attach(Canvas* canvas);
+};
+```
+
+通过 `UserPointer`，`GLFW` 的纯函数回调可以找到具体的 `ActionHandler` 实例：
+
+```cpp
+void Canvas::attach_handler(ActionHandler* handler) {
+    auto key_callback = [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+        ActionHandler* self = static_cast<ActionHandler*>(glfwGetWindowUserPointer(window));
+        self->on_key(key, action);
+    };
+    auto mouse_button_callback = [](GLFWwindow* window, int button, int action, int mods) {
+        ActionHandler* self = static_cast<ActionHandler*>(glfwGetWindowUserPointer(window));
+        self->on_mouse_button(button, action, mods);
+    };
+    auto mouse_move_callback = [](GLFWwindow* window, double xpos, double ypos) {
+        ActionHandler* self = static_cast<ActionHandler*>(glfwGetWindowUserPointer(window));
+        self->on_mouse_move(xpos, ypos);
+    };
+    glfwSetWindowUserPointer(this->window, handler);
+    glfwSetKeyCallback(this->window, key_callback);
+    glfwSetMouseButtonCallback(this->window, mouse_button_callback);
+    glfwSetCursorPosCallback(this->window, mouse_move_callback);
+    handler->attach(this);
+}
+```
+
+#split-semi
+
+
+`Painter` 继承自 `ActionHandler`：
+
+- 按下 `Space` 打开主菜单，`Esc` 关闭菜单或取消草稿，`Backspace` 撤销最近一次提交；
+- 左键点击会查询当前鼠标位置，转换为世界坐标后交给草稿；右键点击等价于发送 `Esc`，用于快速终止当前操作；
+- 鼠标移动持续刷新草稿的预览图形。
+
+像素到世界坐标的转换由 `Painter::cursor_to_world` 完成，它根据投影体的左右/上下边界线性插值：
+
+```cpp
+Vertex2d cursor_to_world(double xpos, double ypos) const {
+    double nx = xpos / canvas->params.display_size.width;
+    double ny = ypos / canvas->params.display_size.height;
+    const auto& proj = canvas->params.projection;
+    double world_x = proj.left + nx * (proj.right - proj.left);
+    double world_y = proj.top - ny * (proj.top - proj.bottom);
+    return Vertex2d{world_x, world_y};
+}
+```
+
+整条输入链路是 “GLFW → Canvas → ActionHandler/Painter → Draft”。`Canvas` 仅负责把事件转发出去。
+
 == 画板设计
+
+`Painter` 是画板系统的核心，负责：
+
+1. 维护当前草稿 `current_draft` 以及绘制历史 `drawn_entities`，支持撤销/重建；
+2. 管理样式（描边颜色/宽度、填充颜色、矩形圆角等）的循环选项，并能随时刷新草稿和最后一次实体；
+3. 渲染及驱动菜单覆盖层，响应用户切换形状或参数的需求；
+4. 把草稿提交的实体设置合适的优先级后交给 `Canvas`。
+
+历史记录中的每一项会保存实体指针、优先级、图形类型以及一个 `rebuild` lambda。这样当用户在菜单里修改样式时，只需调用 `rebuild_last_entity()` 用最新样式重新生成一次实体即可；优先级（绘制顺序）仍然保持不变。
 
 === 菜单操作
 
+菜单由 `MenuState` + `MenuOverlayEntity` 组合实现。`MenuState` 记录锚点、宽度、内边距以及 `MenuItem` 列表，`MenuOverlayEntity` 则根据状态绘制背景板、按钮和文字。为了保证菜单始终盖在最上层，实体优先级固定设置为 `200000`。
+
+- *主菜单（Space）*：展示 `Shape / Stroke color / Stroke width` 三项，可循环当前形状类型和描边样式，同时立即刷新草稿的预览实体。
+- *形状菜单（自动）*：当最近提交的形状支持填充或额外参数（矩形圆角）时弹出，允许修改 `Fill`、`Corner radius` 等。每次点击都会执行对应 action，再调用 `rebuild_last_entity()` 把形状按最新样式重建。
+- *关闭逻辑*：点击任意空白区域或按 `Esc/RightClick` 会把 `MenuState.visible` 置为 `false`，菜单实体仍然存在但不再渲染，下次按 `Space` 会重用。
+
+菜单命中检测通过 `MenuItem::contains` 完成。鼠标事件会先尝试命中菜单，如果命中则执行 action 并刷新 layout，否则继续流向草稿逻辑，实现了 UI 与绘图操作的统一输入链。
+
 === 草稿处理
+
+草稿层把“正在交互中的形状”与“已经提交的实体”分离：
+
+- `DraftContext`：封装 `Canvas*`、预览颜色、样式提供器、提交回调以及“工作优先级”分配器；
+- `Draft` 基类暴露 `on_mouse_button/move`、`on_key`、`refresh_style`、`reset` 等接口，派生类只需关心几何逻辑。
+
+具体草稿：
+
+- `LineDraft` / `RectangleDraft` / `CircleDraft`：两次点击确定关键点，过程中生成淡色预览实体；
+- `PolygonDraft` / `PolylineDraft`：不断追加顶点，`Enter` 提交，`Esc` 取消；
+- 所有预览实体的优先级都由 `working_priority_allocator` 发放，数值极大，确保不会被历史中已有实体挡住。
+
+当草稿决定提交时，会创建一个 `DraftCommit`：
+
+```cpp
+struct DraftCommit {
+    std::unique_ptr<Entity> entity;  // 首次绘制结果
+    std::function<std::unique_ptr<Entity>(Canvas*, const DraftStyle&)> rebuild;
+    ShapeType shape_type;
+};
+```
+
+`Painter` 收到提交后会：
+
+1. 分配一个递增的绘制优先级并写入实体；
+2. 把实体、优先级、形状类型和 `rebuild` lambda 推入历史栈；
+3. 根据形状类型决定是否打开“形状菜单”；
+4. 若用户按 `Backspace`，仅需弹出栈顶即可，实体析构时会自动从 `Canvas` 中注销。
+
+这种架构使得添加新形状非常简单：实现一个新的 `Draft` 子类即可复用 `Painter` 的系统、菜单、历史记录和预览优先级机制。
