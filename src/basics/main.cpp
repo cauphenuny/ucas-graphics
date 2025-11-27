@@ -80,7 +80,11 @@ void interact_demo(Canvas& canvas) {
 }
 
 int main(int argc, char** argv) {
-    themes::current_theme = themes::CATPPUCCIN;
+    if (argc > 1) {
+        themes::current_theme = themes::find(argv[1]);
+    } else {
+        themes::current_theme = themes::CATPPUCCIN;
+    }
     Canvas canvas(
         CanvasParameters{
             .title = "Project 1",

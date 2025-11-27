@@ -72,7 +72,7 @@ Bright Magenta (13)	#FF55FF
 Bright Cyan (14)	#55FFFF
 Bright White (15)	#FFFFFF
 */
-constexpr Palette XTERM = {0x000000, 0xAA0000, 0x00AA00, 0xAA5500, 0x0000AA, 0xAA00AA,
+constexpr Palette XTERM_DARK = {0x000000, 0xAA0000, 0x00AA00, 0xAA5500, 0x0000AA, 0xAA00AA,
                              0x00AAAA, 0xAAAAAA, 0x555555, 0xFF5555, 0x55FF55, 0xFFFF55,
                              0x5555FF, 0xFF55FF, 0x55FFFF, 0xFFFFFF};
 
@@ -107,6 +107,18 @@ constexpr Palette CATPPUCCIN_DARK = {
     0x24273a, 0xf38ba8, 0xa6e3a1, 0xf9e2af, 0x89bffa, 0xcba6f7, 0x94e2d5, 0xeff1f5 };
 
 inline Palette current_theme = CATPPUCCIN;
+
+inline Palette find(const std::string_view name) {
+    if (name == "xterm-dark") {
+        return XTERM_DARK;
+    } else if (name == "catppuccin") {
+        return CATPPUCCIN;
+    } else if (name == "catppuccin-dark") {
+        return CATPPUCCIN_DARK;
+    } else {
+        throw std::runtime_error(fmt::format("Unknown theme name: {}", name));
+    }
+}
 
 }  // namespace themes
 
