@@ -485,14 +485,12 @@ private:
 
     void cycle_stroke_color() {
         stroke_color_index = (stroke_color_index + 1) % stroke_palette.size();
-        rebuild_last_entity();
         refresh_active_draft_style();
         refresh_menu_items();
     }
 
     void cycle_stroke_width() {
         stroke_width_index = (stroke_width_index + 1) % stroke_width_options.size();
-        rebuild_last_entity();
         refresh_active_draft_style();
         refresh_menu_items();
     }
