@@ -29,7 +29,7 @@ struct Color {
 
 namespace themes {
 
-enum class Color {
+enum class ColorID {
     WHITE = 0,  // background
     RED = 1,
     GREEN = 2,
@@ -139,7 +139,7 @@ inline Color::Color(const std::string_view color_name) {
     // convert to uppercase because magic_enum expects enum names like "WHITE", "BLACK"
     std::transform(
         name.begin(), name.end(), name.begin(), [](unsigned char c) { return std::toupper(c); });
-    auto color_enum = magic_enum::enum_cast<themes::Color>(name);
+    auto color_enum = magic_enum::enum_cast<themes::ColorID>(name);
     if (color_enum.has_value()) {
         auto color = color_enum.value();
         unsigned int hex = current_theme.palette[static_cast<int>(color)];

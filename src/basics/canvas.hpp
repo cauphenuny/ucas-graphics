@@ -163,8 +163,8 @@ struct Canvas {
     void add_entity(Entity* entity);
     void delete_entity(Entity* entity);
 
-    template <typename T> auto draw(T config) {
-        auto entity = std::make_unique<typename T::EntityType>(this, config);
+    auto draw(auto config) {
+        auto entity = std::make_unique<typename decltype(config)::EntityType>(this, config);
         spdlog::info("draw: {}, id={}, canvas={}", entity->repr(), (void*)entity.get(), (void*)this);
         return entity;
     }
