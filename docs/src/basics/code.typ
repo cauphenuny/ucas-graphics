@@ -58,7 +58,7 @@ struct Palette {
 
 inline Color::Color(const std::string_view color_name) {
     std::string name{color_name};
-    // convert to uppercase because magic_enum expects enum names like "WHITE", "BLACK"
+    // convert to uppercase because we use uppercase in enum fields like "WHITE", "BLACK"
     std::transform(
         name.begin(), name.end(), name.begin(), [](unsigned char c) { return std::toupper(c); });
     auto color_enum = magic_enum::enum_cast<themes::ColorID>(name);
@@ -72,7 +72,7 @@ inline Color::Color(const std::string_view color_name) {
 }
 ```
 
-因此，在代码中改变 `current_theme` 会立刻改变主题，影响新构造出的颜色
+因此，在代码中改变 `current_theme` 会改变主题，影响新构造出的颜色
 
 === 窗口管理
 
@@ -146,6 +146,8 @@ struct Canvas {
         // 初始化窗口
         this->window_init();
         this->init();
+        
+        // set_action_handler 是设置当前的 handler，但是窗口初始化后才能把当前handler attach到这个窗口
         if (this->action_handler) this->attach_handler(this->action_handler.get());
         while (!glfwWindowShouldClose(this->window)) {
             glClear(GL_COLOR_BUFFER_BIT);
@@ -172,7 +174,7 @@ struct Canvas {
 
 图形绘制函数都在 `draw` 命名空间下，这个命名空间下的函数不负责保存图形状态，只负责绘制，图形状态由 `Entity` 保存（类似 `torch.nn.functional`）
 
-另外我发现直接画线的话线段的粗细不够，所以代码里都是用 rect 模拟线段的
+另外我发现直接画线的话线段的粗细不够，而 mac 上 `glLineWidth` 似乎有问题，#link("https://www.reddit.com/r/opengl/comments/at1az3/gllinewidth_not_working/")[#text(blue)[OpenGL 标准没有要求实现 $"width" != 1$ 的 `glLineWidth`]]，所以代码里都是用 rect 模拟线段的
 
 ```cpp
 // namespace draw
@@ -287,8 +289,6 @@ inline void text(
     glColor3d(color.red, color.green, color.blue);
     glTranslated(origin.x, origin.y - normalized_scale * kStrokeFontHeight * 0.5, 0.0);
     glScaled(normalized_scale, normalized_scale, 1.0);
-    // set a thicker line width for stroke font rendering
-    glLineWidth(line_width);
     // draw multiple passes with symmetric offsets to thicken strokes without shifting position
     const double offset = 3.0;  // in stroke-font units (before scaling)
     const double step = 0.3;
@@ -305,8 +305,6 @@ inline void text(
             glPopMatrix();
         }
     }
-    // restore default line width
-    glLineWidth(1.0f);
     glPopMatrix();
 }
 ```
@@ -368,9 +366,11 @@ inline Entity::~Entity() {
 }
 ```
 
-如果 `Canvas` 先于 `Entity` 析构，也是安全的，因为只有 `Canvas` 会调用 `draw()`，只要把 `Entity` 里面的 `container` 指针清了就行，唯一需要担心的问题是 `Entity` 内存泄露，但用 `std::unique_ptr` 可以解决这一问题。
+如果 `Canvas` 先于 `Entity` 析构，也是安全的，因为只有 `Canvas` 会调用 `draw()`，只要把 `Entity` 里面的 `container` 指针清了让 `Entity` 析构的时候不在 `container` (已失效) 中注销自己就行
 
-由于配置里面定义了实体类的类型 `using EntityType = LineEntity;`，所以可以通过模板函数 `Canvas::draw(some_config)` 来添加实体，不需要指定模版参数 `draw<SomeShape>(SomeShapeConfig(.key1 = ...))` 了
+唯一需要担心的问题是 `Entity` 内存泄露，但用 `std::unique_ptr` 管理所有权可以解决这一问题。
+
+由于配置类里面定义了实体类的类型 `using EntityType = LineEntity;`，所以可以通过模板函数 `Canvas::draw(some_config)` 来添加实体，不需要指定模版参数 `draw<SomeShape>(SomeShapeConfig(.key1 = ...))` 了
 
 ```cpp
 auto Canvas::draw(auto config) {
@@ -380,7 +380,7 @@ auto Canvas::draw(auto config) {
 }
 ```
 
-使用 `Config` 结构体创建实体可以做到一种类似 `python kwargs` 风格的调用
+使用 `Config` 类创建实体可以做到一种类似 `python kwargs` 风格的调用
 
 例如创建小电脑的代码如下：
 
@@ -534,6 +534,32 @@ Vertex2d cursor_to_world(double xpos, double ypos) const {
 
 历史记录中的每一项会保存实体指针、优先级、图形类型以及一个 `rebuild` lambda。这样当用户在菜单里修改样式时，只需调用 `rebuild_last_entity()` 用最新样式重新生成一次实体即可；优先级（绘制顺序）仍然保持不变。
 
+```cpp
+struct HistoryEntry {
+    std::unique_ptr<Entity> entity;
+    int priority;
+    ShapeType shape;
+    std::function<std::unique_ptr<Entity>(Canvas*, const DraftStyle&)> rebuild;
+};
+
+void Painter::handle_draft_commit(DraftCommit commit_info) {
+    if (!commit_info.entity) return;
+    int priority = allocate_committed_priority();
+    commit_info.entity->set_priority(priority);
+    drawn_entities.push_back(HistoryEntry{
+        .entity = std::move(commit_info.entity),
+        .priority = priority,
+        .shape = commit_info.shape_type,
+        .rebuild = std::move(commit_info.rebuild),
+    });
+    if (has_shape_specific_options(commit_info.shape_type)) {
+        open_shape_menu();
+    } else if (menu_state.kind == MenuKind::ShapeSpecific) {
+        close_menu();
+    }
+}
+```
+
 === 菜单操作
 
 菜单由 `MenuState` + `MenuOverlayEntity` 组合实现。`MenuState` 记录锚点、宽度、内边距以及 `MenuItem` 列表，`MenuOverlayEntity` 则根据状态绘制背景板、按钮和文字。为了保证菜单始终盖在最上层，实体优先级固定设置为 `200000`。
@@ -544,12 +570,78 @@ Vertex2d cursor_to_world(double xpos, double ypos) const {
 
 菜单命中检测通过 `MenuItem::contains` 完成。鼠标事件会先尝试命中菜单，如果命中则执行 action 并刷新 layout，否则继续流向草稿逻辑，实现了 UI 与绘图操作的统一输入链。
 
+```cpp
+void Painter::ensure_menu_layer() {
+    if (menu_layer || !canvas) return;
+    MenuOverlay overlay{ .state = &menu_state };
+    menu_layer = canvas->draw(overlay);
+    menu_layer->set_priority(200000);
+}
+
+std::vector<MenuItem> Painter::build_main_menu_items() {
+    return {
+        MenuItem{
+            .label = fmt::format("Shape: {}", magic_enum::enum_name(active_shape)),
+            .action = [this]() { cycle_shape_type(); },
+        },
+        MenuItem{
+            .label = fmt::format("Stroke color: {}", stroke_palette[stroke_color_index]),
+            .action = [this]() { cycle_stroke_color(); },
+        },
+        MenuItem{
+            .label = fmt::format(
+                "Stroke width: {:.1f}", stroke_width_options[stroke_width_index]),
+            .action = [this]() { cycle_stroke_width(); },
+        },
+    };
+}
+```
+
 === 草稿处理
 
 草稿层把“正在交互中的形状”与“已经提交的实体”分离：
 
 - `DraftContext`：封装 `Canvas*`、预览颜色、样式提供器、提交回调以及“工作优先级”分配器；
 - `Draft` 基类暴露 `on_mouse_button/move`、`on_key`、`refresh_style`、`reset` 等接口，派生类只需关心几何逻辑。
+
+```cpp
+struct DraftContext {
+    Canvas* canvas{nullptr};
+    Color preview_color{mix("foreground", "background", 0.8)};
+    std::function<DraftStyle()> style_provider;
+    std::function<void(DraftCommit)> commit_callback;
+    std::function<int()> working_priority_allocator;
+};
+
+class Draft {
+public:
+    explicit Draft(DraftContext ctx) : ctx_(std::move(ctx)) {}
+    virtual ~Draft() = default;
+
+    virtual std::string name() const = 0;
+    virtual void on_mouse_button(int button, int action, int mods, const Vertex2d& world) = 0;
+    virtual void on_mouse_move(const Vertex2d& world) = 0;
+    virtual void on_key(int key, int action) {}
+    virtual void refresh_style() {}
+    virtual void reset() = 0;
+
+protected:
+    DraftStyle current_style() const {
+        return ctx_.style_provider ? ctx_.style_provider() : DraftStyle{};
+    }
+    Color preview_color() const { return ctx_.preview_color; }
+    Canvas* canvas() const { return ctx_.canvas; }
+    int allocate_working_priority() const {
+        return ctx_.working_priority_allocator ? ctx_.working_priority_allocator() : 0;
+    }
+    void commit(DraftCommit commit_info) {
+        if (ctx_.commit_callback) ctx_.commit_callback(std::move(commit_info));
+    }
+
+private:
+    DraftContext ctx_;
+};
+```
 
 具体草稿：
 
@@ -565,6 +657,20 @@ struct DraftCommit {
     std::function<std::unique_ptr<Entity>(Canvas*, const DraftStyle&)> rebuild;
     ShapeType shape_type;
 };
+```
+
+```cpp
+DraftContext Painter::make_draft_context() {
+    DraftContext ctx;
+    ctx.canvas = canvas;
+    ctx.preview_color = preview_color;
+    ctx.style_provider = [this]() { return current_style(); };
+    ctx.commit_callback = [this](DraftCommit commit_info) {
+        handle_draft_commit(std::move(commit_info));
+    };
+    ctx.working_priority_allocator = [this]() { return allocate_working_priority(); };
+    return ctx;
+}
 ```
 
 `Painter` 收到提交后会：

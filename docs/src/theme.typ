@@ -88,6 +88,7 @@
     stroke: 0.05em,
   )
   show raw: set text(font: ("Menlo", "FiraCode Nerd Font"))
+  show raw.where(block: true): set text(size: 0.8em)
 
   align(center, text(1.7em)[*#course* *#title*])
   align(right, emph(author))

@@ -321,8 +321,6 @@ inline void text(
     glColor3d(color.red, color.green, color.blue);
     glTranslated(origin.x, origin.y - normalized_scale * kStrokeFontHeight * 0.5, 0.0);
     glScaled(normalized_scale, normalized_scale, 1.0);
-    // set a thicker line width for stroke font rendering
-    glLineWidth(line_width);
     // draw multiple passes with symmetric offsets to thicken strokes without shifting position
     const double offset = 3.0;  // in stroke-font units (before scaling)
     const double step = 0.3;
@@ -339,8 +337,6 @@ inline void text(
             glPopMatrix();
         }
     }
-    // restore default line width
-    glLineWidth(1.0f);
     glPopMatrix();
 }
 

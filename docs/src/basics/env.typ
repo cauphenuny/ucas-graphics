@@ -11,30 +11,28 @@
 
 #let xmake-lua = read("../../../xmake.lua")
 
-#figure(
-  ```lua
-  add_rules("mode.debug", "mode.release")
-  set_languages("c99", "c++20")
-  add_requires("opengl", {system = true})
-  add_requires("glut", {system = true})
-  add_requires("glfw3", {system = true})
-  add_requires("spdlog", {system = true})
-  add_requires("magic_enum")
+```lua
+-- xmake.lua
+add_rules("mode.debug", "mode.release")
+set_languages("c99", "c++20")
+add_requires("opengl", {system = true})
+add_requires("glut", {system = true})
+add_requires("glfw3", {system = true})
+add_requires("spdlog", {system = true})
+add_requires("magic_enum")
 
-  target("project1")
-      set_kind("binary")
-      add_files("src/basics/*.cpp")
-      add_packages("opengl")
-      add_packages("glut")
-      add_packages("spdlog")
-      add_packages("glfw3")
-      add_packages("magic_enum")
-      if is_plat("macosx") then
-          add_frameworks("Cocoa", "CoreFoundation", "IOKit")
-      end
-  ```,
-  caption: "xmake.lua",
-)
+target("project1")
+    set_kind("binary")
+    add_files("src/basics/*.cpp")
+    add_packages("opengl")
+    add_packages("glut")
+    add_packages("spdlog")
+    add_packages("glfw3")
+    add_packages("magic_enum")
+    if is_plat("macosx") then
+        add_frameworks("Cocoa", "CoreFoundation", "IOKit")
+    end
+```
 
 由于在我的 macOS 环境下 xmake/vcpkg 安装的 `opengl/glfw/spdlog` 库有点问题，所以改成用系统的库了，在编译前需要先安装这些依赖。
 
