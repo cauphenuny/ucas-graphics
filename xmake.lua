@@ -8,6 +8,7 @@ add_requires("magic_enum")
 
 target("project1")
     set_kind("binary")
+    set_warnings("all")
     add_files("src/basics/*.cpp")
     add_packages("opengl")
     add_packages("glut")

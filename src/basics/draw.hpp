@@ -315,7 +315,6 @@ inline void text(
         return;
     }
     double normalized_scale = std::max(0.001, 0.0027 * scale);
-    float line_width = std::max(1.0f, static_cast<float>(2.0 * scale));
     constexpr double kStrokeFontHeight = 110;
     glPushMatrix();
     glColor3d(color.red, color.green, color.blue);
