@@ -2,10 +2,11 @@
 
 #include <OpenGL/gl.h>
 #include <OpenGL/gltypes.h>
+#include <cassert>
 #include <fmt/format.h>
 #include <glfw/glfw3.h>
+#include <iterator>
 #include <magic_enum/magic_enum.hpp>
-
 
 namespace opengl {
 

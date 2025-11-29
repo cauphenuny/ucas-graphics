@@ -3,9 +3,8 @@
 #include "entity.hpp"
 #include "painter.hpp"
 
-#include <GLUT/glut.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <set>
+#include <memory>
 
 using namespace opengl;
 

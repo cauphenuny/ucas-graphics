@@ -5,6 +5,7 @@
 
 #include <GLUT/glut.h>
 #include <OpenGL/gl.h>
+#include <algorithm>
 #include <cassert>
 #include <cctype>
 #include <fmt/format.h>
@@ -16,6 +17,7 @@
 #include <spdlog/spdlog.h>
 #include <string>
 #include <sys/types.h>
+#include <vector>
 
 namespace opengl {
 

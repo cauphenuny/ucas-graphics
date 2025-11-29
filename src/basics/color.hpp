@@ -3,6 +3,7 @@
 #include <OpenGL/gl.h>
 #include <OpenGL/gltypes.h>
 #include <algorithm>
+#include <cctype>
 #include <fmt/format.h>
 #include <glfw/glfw3.h>
 #include <magic_enum/magic_enum.hpp>
