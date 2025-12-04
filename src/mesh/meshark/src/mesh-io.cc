@@ -2,8 +2,10 @@
 // Created by creeper on 7/21/24.
 //
 #include <meshark/mesh-io.h>
+#include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 namespace meshark {
 

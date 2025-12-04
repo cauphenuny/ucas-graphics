@@ -26,7 +26,7 @@ target("meshark")
     add_includedirs("src/mesh/external/glm", {public = true})
     add_headerfiles("src/mesh/meshark/include/(**.h)")
 
-target("simplify")
+target("project2")
     set_kind("binary")
     add_files("src/mesh/meshark/apps/simplify.cc")
     add_deps("meshark")
