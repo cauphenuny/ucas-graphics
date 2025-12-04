@@ -19,6 +19,18 @@ target("project1")
         add_frameworks("Cocoa", "CoreFoundation", "IOKit")
     end
 
+target("meshark")
+    set_kind("static")
+    add_files("src/mesh/meshark/src/*.cc")
+    add_includedirs("src/mesh/meshark/include", {public = true})
+    add_includedirs("src/mesh/external/glm", {public = true})
+    add_headerfiles("src/mesh/meshark/include/(**.h)")
+
+target("simplify")
+    set_kind("binary")
+    add_files("src/mesh/meshark/apps/simplify.cc")
+    add_deps("meshark")
+
 --
 -- If you want to known more usage about xmake, please see https://xmake.io
 --
