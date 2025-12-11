@@ -5,6 +5,7 @@
 #ifndef MESHSIMPLIFICATION_MESHARK_INCLUDE_MESHARK_ELEMENT_DECL_H_
 #define MESHSIMPLIFICATION_MESHARK_INCLUDE_MESHARK_ELEMENT_DECL_H_
 #include <mystl/observer-ptr.h>
+#include <type_traits>
 namespace meshark {
 struct VertexElement;
 struct HalfEdgeElement;

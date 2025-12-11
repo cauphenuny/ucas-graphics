@@ -7,7 +7,6 @@
 
 #include <meshark/geometry-mesh.h>
 #include <meshark/element-data.h>
-#include <set>
 #include <map>
 
 namespace meshark {

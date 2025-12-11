@@ -7,10 +7,8 @@
 
 #include <vector>
 #include <memory>
-#include <optional>
 #include <meshark/mesh-type-traits.h>
 #include <meshark/mesh-elements.h>
-#include <iostream>
 #include <cassert>
 
 namespace meshark {

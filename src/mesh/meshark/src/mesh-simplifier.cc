@@ -3,6 +3,7 @@
 //
 #include <meshark/mesh-simplifier.h>
 #include <format>
+#include <iostream>
 
 namespace meshark {
 
