@@ -5,54 +5,54 @@
 #ifndef MESHSIMPLIFICATION_MESH_SIMPLIFICATION_INCLUDE_MESH_SIMPLIFICATION_MESH_SIMPLIFIER_H_
 #define MESHSIMPLIFICATION_MESH_SIMPLIFICATION_INCLUDE_MESH_SIMPLIFICATION_MESH_SIMPLIFIER_H_
 
-#include <meshark/geometry-mesh.h>
-#include <meshark/element-data.h>
 #include <map>
+#include <meshark/element-data.h>
+#include <meshark/geometry-mesh.h>
 
 namespace meshark {
 using Real = double;
 
 struct MeshSimplifier {
-  explicit MeshSimplifier(GeometryMesh &mesh)
-      : mesh(mesh), Q(mesh.numVertices()), edge_collapse_cost(mesh.numEdges()), num_original_edges(mesh.numEdges()) {
-  }
+    explicit MeshSimplifier(GeometryMesh& mesh)
+        : mesh(mesh), Q(mesh.numVertices()), edge_collapse_cost(mesh.numEdges()),
+          num_original_edges(mesh.numEdges()) {}
 
-  void runSimplify(Real alpha);
+    void runSimplify(Real alpha);
 
-  GeometryMesh &mesh;
- private:
-  EdgeData<Real> edge_collapse_cost;
-  std::multimap<Real, Edge> cost_edge_map;
-  VertexData<glm::mat4> Q;
+    GeometryMesh& mesh;
 
-  [[nodiscard]] Vertex collapseEdge(Edge e);
+private:
+    EdgeData<Real> edge_collapse_cost;
+    std::multimap<Real, Edge> cost_edge_map;
+    VertexData<glm::mat4> Q;
 
-  void eraseEdgeMapping(Edge e);
+    [[nodiscard]] Vertex collapseEdge(Edge e);
 
-  int num_original_edges;
+    void eraseEdgeMapping(Edge e);
 
-  struct MinCostEdgeCollapsingResult {
-    Edge failed_edge;
-    bool is_collapsable;
-  };
+    int num_original_edges;
 
-  MinCostEdgeCollapsingResult collapseMinCostEdge();
+    struct MinCostEdgeCollapsingResult {
+        Edge failed_edge;
+        bool is_collapsable;
+    };
 
-  void updateVertexPos(Vertex v, const glm::vec3 &pos);
+    MinCostEdgeCollapsingResult collapseMinCostEdge();
 
-  [[nodiscard]] glm::mat4 computeQuadricMatrix(Vertex v) const;
+    void updateVertexPos(Vertex v, const glm::vec3& pos);
 
-  [[nodiscard]] Real computeEdgeCost(Edge e) const;
+    [[nodiscard]] glm::mat4 computeQuadricMatrix(Vertex v) const;
 
-  [[nodiscard]] glm::vec3 computeOptimalCollapsePosition(Edge e) const;
+    [[nodiscard]] Real computeEdgeCost(Edge e) const;
 
-  void updateEdgeCost(Edge e, Real updated_cost) {
-    if (edge_collapse_cost(e) == updated_cost)
-      return;
-    eraseEdgeMapping(e);
-    edge_collapse_cost(e) = updated_cost;
-    cost_edge_map.insert({updated_cost, e});
-  }
+    [[nodiscard]] glm::vec3 computeOptimalCollapsePosition(Edge e) const;
+
+    void updateEdgeCost(Edge e, Real updated_cost) {
+        if (edge_collapse_cost(e) == updated_cost) return;
+        eraseEdgeMapping(e);
+        edge_collapse_cost(e) = updated_cost;
+        cost_edge_map.insert({updated_cost, e});
+    }
 };
-}
-#endif //MESHSIMPLIFICATION_MESH_SIMPLIFICATION_INCLUDE_MESH_SIMPLIFICATION_MESH_SIMPLIFIER_H_
+}  // namespace meshark
+#endif  // MESHSIMPLIFICATION_MESH_SIMPLIFICATION_INCLUDE_MESH_SIMPLIFICATION_MESH_SIMPLIFIER_H_

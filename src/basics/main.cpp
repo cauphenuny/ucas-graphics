@@ -3,8 +3,8 @@
 #include "entity.hpp"
 #include "painter.hpp"
 
-#include <set>
 #include <memory>
+#include <set>
 
 using namespace opengl;
 

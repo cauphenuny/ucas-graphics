@@ -20,7 +20,6 @@ struct Vertex2d {
     }
 };
 
-
 }  // namespace opengl
 
 namespace fmt {

@@ -167,7 +167,8 @@ struct Canvas {
 
     auto draw(auto config) {
         auto entity = std::make_unique<typename decltype(config)::EntityType>(this, config);
-        spdlog::info("draw: {}, id={}, canvas={}", entity->repr(), (void*)entity.get(), (void*)this);
+        spdlog::info(
+            "draw: {}, id={}, canvas={}", entity->repr(), (void*)entity.get(), (void*)this);
         return entity;
     }
 

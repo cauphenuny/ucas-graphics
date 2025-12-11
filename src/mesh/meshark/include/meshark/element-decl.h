@@ -18,7 +18,8 @@ using Face = mystl::observer_ptr<FaceElement>;
 using Edge = mystl::observer_ptr<EdgeElement>;
 
 template <typename T>
-concept MeshElement = std::is_same_v<T, Vertex> || std::is_same_v<T, Edge> || std::is_same_v<T, HalfEdge> || std::is_same_v<T, Face>;
+concept MeshElement = std::is_same_v<T, Vertex> || std::is_same_v<T, Edge> ||
+                      std::is_same_v<T, HalfEdge> || std::is_same_v<T, Face>;
 
-}
-#endif //MESHSIMPLIFICATION_MESHARK_INCLUDE_MESHARK_ELEMENT_DECL_H_
+}  // namespace meshark
+#endif  // MESHSIMPLIFICATION_MESHARK_INCLUDE_MESHARK_ELEMENT_DECL_H_

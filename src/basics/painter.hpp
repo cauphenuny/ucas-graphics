@@ -292,7 +292,8 @@ private:
         if (!commit_info.entity) {
             return;
         }
-        spdlog::info("committing draft of shape type: {}", magic_enum::enum_name(commit_info.shape_type));
+        spdlog::info(
+            "committing draft of shape type: {}", magic_enum::enum_name(commit_info.shape_type));
         int priority = allocate_committed_priority();
         commit_info.entity->set_priority(priority);
         drawn_entities.push_back(
