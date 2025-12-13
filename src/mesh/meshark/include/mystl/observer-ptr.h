@@ -6,6 +6,7 @@
 #define MESHSIMPLIFICATION_MESH_SIMPLIFICATION_INCLUDE_MESH_SIMPLIFICATION_OBSERVER_PTR_H_
 
 #include <cassert>
+#include <fmt/format.h>
 
 namespace mystl {
 template <typename T> class observer_ptr {
@@ -36,4 +37,19 @@ private:
 
 template <typename T> observer_ptr<T> make_observer(T* ptr) { return observer_ptr<T>(ptr); }
 }  // namespace mystl
+
+namespace fmt {
+template <typename T> struct formatter<mystl::observer_ptr<T>> : formatter<std::remove_reference_t<T>> {
+    using Base = formatter<std::remove_reference_t<T>>;
+    template <typename FormatContext>
+    auto format(const mystl::observer_ptr<T>& p, FormatContext& ctx) const {
+        if (p) {
+            return Base::format(*p.get(), ctx);
+        } else {
+            return fmt::format_to(ctx.out(), "nullptr");
+        }
+    }
+};
+}
+
 #endif  // MESHSIMPLIFICATION_MESH_SIMPLIFICATION_INCLUDE_MESH_SIMPLIFICATION_OBSERVER_PTR_H_

@@ -10,8 +10,17 @@
 #include <meshark/element-set.h>
 
 namespace meshark {
-struct HalfEdgeElement {
-    explicit HalfEdgeElement(int index) : index(index) {}
+
+struct IndexedElement {
+    explicit IndexedElement(int index) : index(index) {}
+    int getIndex() const { return index; }
+
+protected:
+    int index;
+};
+
+struct HalfEdgeElement : IndexedElement {
+    explicit HalfEdgeElement(int index) : IndexedElement(index) {}
     Vertex tip;
     Vertex tail;
     HalfEdge next;
@@ -21,13 +30,12 @@ struct HalfEdgeElement {
 
 protected:
     template <typename Derived> friend struct HalfEdgeMesh;
-    int index;
 };
 
 inline HalfEdge nullHalfEdge() { return mystl::make_observer<HalfEdgeElement>(nullptr); }
 
-struct EdgeElement {
-    explicit EdgeElement(int index) : index(index) {}
+struct EdgeElement : IndexedElement {
+    explicit EdgeElement(int index) : IndexedElement(index) {}
 
     [[nodiscard]] HalfEdge halfEdge() const { return he; }
 
@@ -41,12 +49,11 @@ protected:
     template <typename Derived> friend struct HalfEdgeMesh;
     template <typename T> friend struct EdgeData;
     HalfEdge he;
-    int index;
 };
 
 inline Edge nullEdge() { return mystl::make_observer<EdgeElement>(nullptr); }
 
-struct FaceElement {
+struct FaceElement : IndexedElement {
 protected:
     struct BoundaryLoop {
         explicit BoundaryLoop(HalfEdge start) : start(start) {}
@@ -81,7 +88,7 @@ protected:
     };
 
 public:
-    explicit FaceElement(int index) : index(index) {}
+    explicit FaceElement(int index) : IndexedElement(index) {}
 
     [[nodiscard]] HalfEdge halfEdge() const { return he; }
 
@@ -97,10 +104,9 @@ protected:
     template <typename Derived> friend struct HalfEdgeMesh;
     template <typename T> friend struct FaceData;
     HalfEdge he;
-    int index;
 };
 inline Face nullFace() { return mystl::make_observer<FaceElement>(nullptr); }
-struct VertexElement {
+struct VertexElement : IndexedElement {
 private:
     struct OutgoingHalfEdgeRange {
         explicit OutgoingHalfEdgeRange(HalfEdge start) : start(start) {}
@@ -135,7 +141,7 @@ private:
     };
 
 public:
-    explicit VertexElement(int index) : index(index) {}
+    explicit VertexElement(int index) : IndexedElement(index) {}
 
     [[nodiscard]] HalfEdge halfEdge() const { return he; }
 
@@ -169,8 +175,77 @@ protected:
     template <typename Derived> friend struct HalfEdgeMesh;
     template <typename T> friend struct VertexData;
     HalfEdge he;
-    int index;
 };
 inline Vertex nullVertex() { return mystl::make_observer<VertexElement>(nullptr); }
 }  // namespace meshark
+
+namespace fmt {
+
+struct DebugFormatter {
+    bool debug{false};
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+        if (it != ctx.end() && *it == '?') {
+            debug = true;
+            ++it;
+        }
+        return it;
+    }
+};
+
+template <> struct formatter<meshark::HalfEdgeElement> : DebugFormatter {
+    template <typename FormatContext>
+    auto format(const meshark::HalfEdgeElement& he, FormatContext& ctx) const {
+        if (debug) {
+            return fmt::format_to(
+                ctx.out(), "HalfEdge(id={}, index={}, tail={}, tip={})", (void*)&he, he.getIndex(),
+                he.tail ? he.tail->getIndex() : -1, he.tip ? he.tip->getIndex() : -1);
+        } else {
+            return fmt::format_to(ctx.out(), "HalfEdge({})", he.getIndex());
+        }
+    }
+};
+
+template <> struct formatter<meshark::EdgeElement> : DebugFormatter {
+    template <typename FormatContext>
+    auto format(const meshark::EdgeElement& e, FormatContext& ctx) const {
+        if (debug) {
+            return fmt::format_to(
+                ctx.out(), "Edge(id={}, index={}, v1={}, v2={})", (void*)&e, e.getIndex(),
+                e.firstVertex() ? e.firstVertex()->getIndex() : -1,
+                e.secondVertex() ? e.secondVertex()->getIndex() : -1);
+        } else {
+            return fmt::format_to(ctx.out(), "Edge({})", e.getIndex());
+        }
+    }
+};
+
+template <> struct formatter<meshark::FaceElement> : DebugFormatter {
+    template <typename FormatContext>
+    auto format(const meshark::FaceElement& f, FormatContext& ctx) const {
+        if (debug) {
+            return fmt::format_to(
+                ctx.out(), "Face(id={}, index={}, halfEdge={})", (void*)&f, f.getIndex(),
+                f.halfEdge() ? f.halfEdge()->getIndex() : -1);
+        } else {
+            return fmt::format_to(ctx.out(), "Face({})", f.getIndex());
+        }
+    }
+};
+
+template <> struct formatter<meshark::VertexElement> : DebugFormatter {
+    template <typename FormatContext>
+    auto format(const meshark::VertexElement& v, FormatContext& ctx) const {
+        if (debug) {
+            return fmt::format_to(
+                ctx.out(), "Vertex(id={}, index={}, degree={})", (void*)&v, v.getIndex(),
+                v.degree());
+        } else {
+            return fmt::format_to(ctx.out(), "Vertex({})", v.getIndex());
+        }
+    }
+};
+
+}  // namespace fmt
+
 #endif  // MESHSIMPLIFICATION_MESHARK_INCLUDE_MESHARK_MESH_ELEMENTS_H_
