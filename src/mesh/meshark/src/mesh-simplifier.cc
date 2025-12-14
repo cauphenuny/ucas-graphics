@@ -53,6 +53,8 @@ Vertex MeshSimplifier::collapseEdge(Edge e) {
 
     spdlog::debug("Vertices:\n  v1: {:?}\n  v2: {:?}\n  vx: {:?}\n  vy: {:?}", v1, v2, vx, vy);
 
+    mesh.showTopology(v1), mesh.showTopology(v2);
+
     auto fx = e12->face;
     auto fy = e21->face;
 
@@ -85,9 +87,9 @@ MeshSimplifier::MinCostEdgeCollapsingResult MeshSimplifier::collapseMinCostEdge(
     if (mesh.isCollapsable(min_cost_edge)) {
         auto optimal_pos = computeOptimalCollapsePosition(min_cost_edge);
         auto vertex = collapseEdge(min_cost_edge);
-        checkSanity();
+        checkMeshSanity();
         updateVertexPos(vertex, optimal_pos);
-        checkSanity();
+        checkMeshSanity();
         return {Edge(), true};
     } else {
         return {min_cost_edge, false};
@@ -114,7 +116,7 @@ void MeshSimplifier::runSimplify(Real alpha) {
     int round = 0;
     while (mesh.numEdges() > alpha * num_original_edges) {
         spdlog::info("Round {}: ", round);
-        checkSanity();
+        checkMeshSanity();
         auto result = collapseMinCostEdge();
         round++;
         if (!result.is_collapsable) {
@@ -179,7 +181,7 @@ void MeshSimplifier::eraseEdgeMapping(Edge e) {
     }
 }
 
-void MeshSimplifier::checkSanity() {
+void MeshSimplifier::checkMeshSanity() {
     if (spdlog::default_logger()->level() >= spdlog::level::info) return;
     spdlog::debug("Checking Sanity...");
     assert(mesh.numEdges() == edge_collapse_cost.size());

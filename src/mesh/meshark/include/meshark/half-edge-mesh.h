@@ -140,6 +140,11 @@ template <typename Derived> struct HalfEdgeMesh {
         return true;
     }
 
+    void showTopology(Vertex v, spdlog::level::level_enum lvl = spdlog::level::debug) {
+        spdlog::log(lvl, "{} topology:", v);
+        spdlog::log(lvl, "  outgoing half-edges: {:?}", v->outgoingHalfEdges());
+    }
+
 protected:
     [[nodiscard]] Edge edge(int i) const { return mystl::make_observer(m_edges[i].get()); }
 

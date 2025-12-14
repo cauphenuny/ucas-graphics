@@ -60,7 +60,7 @@ private:
     void removeEdge(Edge e);
     void removeVertex(Vertex v);
 
-    void checkSanity();
+    void checkMeshSanity();
 };
 }  // namespace meshark
 #endif  // MESHSIMPLIFICATION_MESH_SIMPLIFICATION_INCLUDE_MESH_SIMPLIFICATION_MESH_SIMPLIFIER_H_
