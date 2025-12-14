@@ -39,7 +39,4 @@ private:
 template <typename T> observer_ptr<T> make_observer(T* ptr) { return observer_ptr<T>(ptr); }
 }  // namespace mystl
 
-namespace fmt {
-}
-
 #endif  // MESHSIMPLIFICATION_MESH_SIMPLIFICATION_INCLUDE_MESH_SIMPLIFICATION_OBSERVER_PTR_H_

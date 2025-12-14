@@ -5,7 +5,6 @@
 #ifndef MESHSIMPLIFICATION_MESHARK_INCLUDE_MESHARK_MESH_ELEMENTS_H_
 #define MESHSIMPLIFICATION_MESHARK_INCLUDE_MESHARK_MESH_ELEMENTS_H_
 
-#include <cassert>
 #include <fmt/format.h>
 #include <meshark/element-decl.h>
 #include <meshark/element-set.h>
@@ -44,15 +43,24 @@ template <typename T>
 concept indexable = indexable_member<T> || indexable_pointer<T>;
 
 template <typename Type> struct ToString : StaticPolymorphism<Type> {
-    [[gnu::used, gnu::noinline, gnu::visibility("default")]]  // for using in gdb/lldb
-    std::string toString(bool verbose = true) const {
+    [[gnu::used, gnu::noinline, gnu::visibility("default")]]  // for using it in gdb/lldb
+    std::string repr() const {                                // name from python __repr__ method
         static_assert(fmt::formattable<Type>, "type must be formattable by fmt");
+        // use debug format if available
         if constexpr (requires { fmt::format("{:?}", this->derived()); }) {
-            if (verbose) {
-                return fmt::format("{:?}", this->derived());
-            }
+            return fmt::format("{:?}", this->derived());
+        } else {
+            return fmt::format("{}", this->derived());
         }
+    }
+    [[gnu::used, gnu::noinline, gnu::visibility("default")]]
+    std::string str() const {
+        static_assert(fmt::formattable<Type>, "type must be formattable by fmt");
         return fmt::format("{}", this->derived());
+    }
+    [[gnu::used, gnu::noinline, gnu::visibility("default")]]
+    operator std::string() const {
+        return str();
     }
 };
 
@@ -94,36 +102,26 @@ inline Edge nullEdge() { return mystl::make_observer<EdgeElement>(nullptr); }
 
 struct FaceElement : traits::Index, traits::ToString<FaceElement> {
 protected:
-    struct BoundaryLoop {
-        explicit BoundaryLoop(HalfEdge start) : start(start) {}
+    struct BoundaryIterator {
+        using difference_type = std::ptrdiff_t;
+        using value_type = HalfEdge;
+        BoundaryIterator& operator++() {
+            it = it->next;
+            if (it == start) it = static_cast<HalfEdge>(nullptr);
+            return *this;
+        }
+        BoundaryIterator operator++(int) {
+            BoundaryIterator temp = *this;
+            ++(*this);
+            return temp;
+        }
 
-        struct Iterator {
-            Iterator& operator++() {
-                it = it->next;
-                if (it == start) it = static_cast<HalfEdge>(nullptr);
-                return *this;
-            }
+        HalfEdge operator*() const { return it; }
 
-            HalfEdge operator*() const { return it; }
-
-            bool operator==(const Iterator& other) const { return it == other.it; }
-
-            HalfEdge start;
-            HalfEdge it;
-        };
+        bool operator==(const BoundaryIterator& other) const { return it == other.it; }
 
         HalfEdge start;
-
-        [[nodiscard]] Iterator begin() const {
-            return {
-                .start = start,
-                .it = start,
-            };
-        }
-
-        [[nodiscard]] Iterator end() const {
-            return {.start = start, .it = static_cast<HalfEdge>(nullptr)};
-        }
+        HalfEdge it;
     };
 
 public:
@@ -133,7 +131,10 @@ public:
 
     HalfEdge& halfEdge() { return he; }
 
-    [[nodiscard]] BoundaryLoop boundaryHalfEdges() const { return BoundaryLoop(he); }
+    [[nodiscard]] auto boundaryHalfEdges() const {
+        return std::ranges::subrange<BoundaryIterator>{
+            BoundaryIterator{he, he}, BoundaryIterator{he, HalfEdge{nullptr}}};
+    }
 
     [[nodiscard]] Vertex vertex() const { return he->tip; }
 
@@ -155,6 +156,8 @@ private:
         // in auto detecting subrange kind(sized or unsized)
         // in std::ranges::subrange template parameter deduction
         using difference_type = std::ptrdiff_t;
+        // for ranges::views operations
+        using value_type = HalfEdge;
 
         OutgoingHalfEdgeIterator& operator++() {
             // TODO: implement operator++ for OutgoingHalfEdgeRange::Iterator
@@ -187,8 +190,6 @@ public:
         return std::ranges::subrange<OutgoingHalfEdgeIterator>{
             OutgoingHalfEdgeIterator{he, he}, OutgoingHalfEdgeIterator{he, HalfEdge{nullptr}}};
     }
-
-    void showOutgoingHalfEdges();
 
     [[nodiscard]] int degree() const {
         int deg = 0;
@@ -250,10 +251,11 @@ template <> struct formatter<meshark::HalfEdgeElement> : ElementFormattingParser
     template <typename FormatContext>
     auto format(const meshark::HalfEdgeElement& he, FormatContext& ctx) const {
         if (debug) {
-            assert(he.twin && "twin edge broken");
+            auto twin = he.twin ? fmt::format("HalfEdge({})", he.twin->getIndex()) : "nullptr";
+            auto next = he.next ? fmt::format("HalfEdge({})", he.next->getIndex()) : "nullptr";
             return fmt::format_to(
-                ctx.out(), "HalfEdge(id={}, tail={}, tip={}, twin=HalfEdge({}))", id(he), he.tail,
-                he.tip, he.twin->getIndex());
+                ctx.out(), "HalfEdge(id={}, tail={}, tip={}, twin={}, next={}, edge={}, face={})",
+                id(he), he.tail, he.tip, twin, next, he.edge, he.face);
         }
         return fmt::format_to(ctx.out(), "HalfEdge({})", he.getIndex());
     }
@@ -275,7 +277,9 @@ template <> struct formatter<meshark::FaceElement> : ElementFormattingParser {
     template <typename FormatContext>
     auto format(const meshark::FaceElement& f, FormatContext& ctx) const {
         if (debug) {
-            return fmt::format_to(ctx.out(), "Face(id={}, halfEdge={})", id(f), f.halfEdge());
+            auto boundary_vertices = f.boundaryHalfEdges() |
+                                     std::views::transform([](auto he) { return he->tail; });
+            return fmt::format_to(ctx.out(), "Face(id={}, boundary={})", id(f), boundary_vertices);
         } else {
             return fmt::format_to(ctx.out(), "Face({})", f.getIndex());
         }
