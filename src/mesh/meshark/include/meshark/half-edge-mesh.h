@@ -7,8 +7,10 @@
 
 #include <cassert>
 #include <memory>
+#include <meshark/element-decl.h>
 #include <meshark/mesh-elements.h>
 #include <meshark/mesh-type-traits.h>
+#include <mystl/fmt.h>
 #include <vector>
 
 namespace meshark {
@@ -43,10 +45,10 @@ template <typename Derived> struct HalfEdgeMesh {
     template <typename... Args> HalfEdge createHalfEdge(Args&&... args) {
         m_half_edges.push_back(std::make_unique<HalfEdgeElement>(numHalfEdges()));
         return mystl::make_observer(m_half_edges.back().get());
-        ;
     }
 
     void removeVertex(Vertex v) {
+        spdlog::debug("Removing {}", v);
         int idx = v->index;
         if constexpr (additional_vertex_attribute_trait<Derived>::value)
             derived().removeVertexAttribute(v);
@@ -56,10 +58,12 @@ template <typename Derived> struct HalfEdgeMesh {
         }
         std::swap(m_vertices[idx], m_vertices.back());
         m_vertices.pop_back();
+        spdlog::debug("Swapped and removed, assign index {} to {}", idx, m_vertices[idx]);
         m_vertices[idx]->index = idx;
     }
 
     void removeFace(Face f) {
+        spdlog::debug("Removing {}", f);
         int idx = f->index;
         if constexpr (additional_face_attribute_trait<Derived>::value)
             derived().removeFaceAttribute(f);
@@ -69,10 +73,12 @@ template <typename Derived> struct HalfEdgeMesh {
         }
         std::swap(m_faces[idx], m_faces.back());
         m_faces.pop_back();
+        spdlog::debug("Swapped and removed, assign index {} to {}", idx, m_faces[idx]);
         m_faces[idx]->index = idx;
     }
 
     void removeEdge(Edge e) {
+        spdlog::debug("Removing {}", e);
         int idx = e->index;
         if constexpr (additional_edge_attribute_trait<Derived>::value)
             derived().removeEdgeAttribute(e);
@@ -82,10 +88,12 @@ template <typename Derived> struct HalfEdgeMesh {
         }
         std::swap(m_edges[idx], m_edges.back());
         m_edges.pop_back();
+        spdlog::debug("Swapped and removed, assign index {} to {}", idx, m_edges[idx]);
         m_edges[idx]->index = idx;
     }
 
     void removeHalfEdge(HalfEdge he) {
+        spdlog::debug("Removing {}", he);
         int idx = he->index;
         if (idx == numHalfEdges() - 1) {
             m_half_edges.pop_back();
@@ -93,6 +101,7 @@ template <typename Derived> struct HalfEdgeMesh {
         }
         std::swap(m_half_edges[idx], m_half_edges.back());
         m_half_edges.pop_back();
+        spdlog::debug("Swapped and removed, assign index {} to {}", idx, m_half_edges[idx]);
         m_half_edges[idx]->index = idx;
     }
 
@@ -127,7 +136,7 @@ template <typename Derived> struct HalfEdgeMesh {
         auto v1 = h1->tail;
         auto v2 = h2->tail;
         auto shared_neighbours = v1->adjacentVertices().computeIntersection(v2->adjacentVertices());
-        if (shared_neighbours.size() > 2) return false;
+        if (shared_neighbours.size() != 2) return false;  // >2: multiple plane, =1: boarder edge
         return true;
     }
 
@@ -176,4 +185,5 @@ private:
 };
 
 }  // namespace meshark
+
 #endif  // MESHSIMPLIFICATION_MESH_SIMPLIFICATION_INCLUDE_MESH_SIMPLIFICATION_HALF_EDGE_MESH_H_

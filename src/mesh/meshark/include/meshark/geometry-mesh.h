@@ -9,6 +9,8 @@
 #include <glm/glm.hpp>
 #include <meshark/element-data.h>
 #include <meshark/half-edge-mesh.h>
+#include <spdlog/spdlog.h>
+#include <mystl/fmt.h>
 
 namespace meshark {
 struct WavefrontObj;
@@ -20,7 +22,12 @@ struct GeometryMesh : public HalfEdgeMesh<GeometryMesh> {
     void writeWavefrontObj(const std::filesystem::path& path) const;
     [[nodiscard]] glm::vec3 pos(Vertex v) const { return position(v); }
     [[nodiscard]] glm::vec3 normal(Face f) const { return normals(f); }
+
+    /**
+     * @brief Set the position of a vertex, auto updates corresponding face normals.
+     */
     void setVertexPos(Vertex v, const glm::vec3& pos) {
+        spdlog::debug("Setting position of {:?} to [{}, {}, {}]", v, pos[0], pos[1], pos[2]);
         position(v) = pos;
         for (auto h : v->outgoingHalfEdges()) {
             auto f = h->face;
