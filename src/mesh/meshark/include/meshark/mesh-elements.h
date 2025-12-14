@@ -6,23 +6,60 @@
 #define MESHSIMPLIFICATION_MESHARK_INCLUDE_MESHARK_MESH_ELEMENTS_H_
 
 #include <cassert>
+#include <fmt/format.h>
 #include <meshark/element-decl.h>
 #include <meshark/element-set.h>
+#include <mystl/fmt.h>
 #include <mystl/observer-ptr.h>
 #include <string>
 
 namespace meshark {
 
-struct IndexedElement {
-    explicit IndexedElement(int index) : index(index) {}
+namespace traits {
+
+template <typename Derived> struct StaticPolymorphism {
+    const Derived& derived() const { return *static_cast<const Derived*>(this); }
+    Derived& derived() { return *static_cast<Derived*>(this); }
+};
+
+struct Index {
+    explicit Index(int index) : index(index) {}
     int getIndex() const { return index; }
 
 protected:
     int index;
 };
 
-struct HalfEdgeElement : IndexedElement {
-    explicit HalfEdgeElement(int index) : IndexedElement(index) {}
+template <typename T>
+concept indexable_member = requires(T a) {
+    { a.getIndex() } -> std::convertible_to<int>;
+};
+
+template <typename T>
+concept indexable_pointer = requires(T a) {
+    { a->getIndex() } -> std::convertible_to<int>;
+};
+
+template <typename T>
+concept indexable = indexable_member<T> || indexable_pointer<T>;
+
+template <typename Type> struct ToString : StaticPolymorphism<Type> {
+    [[gnu::used, gnu::noinline, gnu::visibility("default")]]  // for using in gdb/lldb
+    std::string toString(bool verbose = true) const {
+        static_assert(fmt::formattable<Type>, "type must be formattable by fmt");
+        if constexpr (requires { fmt::format("{:?}", this->derived()); }) {
+            if (verbose) {
+                return fmt::format("{:?}", this->derived());
+            }
+        }
+        return fmt::format("{}", this->derived());
+    }
+};
+
+}  // namespace traits
+
+struct HalfEdgeElement : traits::Index, traits::ToString<HalfEdgeElement> {
+    explicit HalfEdgeElement(int index) : Index(index) {}
     Vertex tip;
     Vertex tail;
     HalfEdge next;
@@ -36,8 +73,8 @@ protected:
 
 inline HalfEdge nullHalfEdge() { return mystl::make_observer<HalfEdgeElement>(nullptr); }
 
-struct EdgeElement : IndexedElement {
-    explicit EdgeElement(int index) : IndexedElement(index) {}
+struct EdgeElement : traits::Index, traits::ToString<EdgeElement> {
+    explicit EdgeElement(int index) : Index(index) {}
 
     [[nodiscard]] HalfEdge halfEdge() const { return he; }
 
@@ -55,7 +92,7 @@ protected:
 
 inline Edge nullEdge() { return mystl::make_observer<EdgeElement>(nullptr); }
 
-struct FaceElement : IndexedElement {
+struct FaceElement : traits::Index, traits::ToString<FaceElement> {
 protected:
     struct BoundaryLoop {
         explicit BoundaryLoop(HalfEdge start) : start(start) {}
@@ -90,7 +127,7 @@ protected:
     };
 
 public:
-    explicit FaceElement(int index) : IndexedElement(index) {}
+    explicit FaceElement(int index) : Index(index) {}
 
     [[nodiscard]] HalfEdge halfEdge() const { return he; }
 
@@ -108,51 +145,50 @@ protected:
     HalfEdge he;
 };
 inline Face nullFace() { return mystl::make_observer<FaceElement>(nullptr); }
-struct VertexElement : IndexedElement {
+
+struct VertexElement : traits::Index, traits::ToString<VertexElement> {
 private:
-    struct OutgoingHalfEdgeRange {
-        explicit OutgoingHalfEdgeRange(HalfEdge start) : start(start) {}
+    struct OutgoingHalfEdgeIterator {
+        // for std::iterator_traits
+        // in std::iter_difference_t
+        // in std::sized_sentinel_for
+        // in auto detecting subrange kind(sized or unsized)
+        // in std::ranges::subrange template parameter deduction
+        using difference_type = std::ptrdiff_t;
 
-        struct Iterator {
-            Iterator& operator++() {
-                // TODO: implement operator++ for OutgoingHalfEdgeRange::Iterator
-                it = it->twin->next;
-                if (it == start) it = static_cast<HalfEdge>(nullptr);
-                return *this;
-            }
-
-            HalfEdge operator*() const { return it; }
-
-            bool operator==(const Iterator& other) const { return it == other.it; }
-
-            HalfEdge start;
-            HalfEdge it;
-        };
-
-        HalfEdge start;
-
-        [[nodiscard]] Iterator begin() const {
-            return {
-                .start = start,
-                .it = start,
-            };
+        OutgoingHalfEdgeIterator& operator++() {
+            // TODO: implement operator++ for OutgoingHalfEdgeRange::Iterator
+            it = it->twin->next;
+            if (it == start) it = static_cast<HalfEdge>(nullptr);
+            return *this;
+        }
+        OutgoingHalfEdgeIterator operator++(int) {
+            OutgoingHalfEdgeIterator temp = *this;
+            ++(*this);
+            return temp;
         }
 
-        [[nodiscard]] Iterator end() const {
-            return {.start = start, .it = static_cast<HalfEdge>(nullptr)};
-        }
+        HalfEdge operator*() const { return it; }
+
+        bool operator==(const OutgoingHalfEdgeIterator& other) const { return it == other.it; }
+
+        HalfEdge start{nullptr};
+        HalfEdge it{nullptr};
     };
 
 public:
-    explicit VertexElement(int index) : IndexedElement(index) {}
+    explicit VertexElement(int index) : Index(index) {}
 
     [[nodiscard]] HalfEdge halfEdge() const { return he; }
 
     HalfEdge& halfEdge() { return he; }
 
-    [[nodiscard]] OutgoingHalfEdgeRange outgoingHalfEdges() const {
-        return OutgoingHalfEdgeRange(he);
+    [[nodiscard]] auto outgoingHalfEdges() const {
+        return std::ranges::subrange<OutgoingHalfEdgeIterator>{
+            OutgoingHalfEdgeIterator{he, he}, OutgoingHalfEdgeIterator{he, HalfEdge{nullptr}}};
     }
+
+    void showOutgoingHalfEdges();
 
     [[nodiscard]] int degree() const {
         int deg = 0;
@@ -181,24 +217,9 @@ protected:
 };
 inline Vertex nullVertex() { return mystl::make_observer<VertexElement>(nullptr); }
 
-template <typename T>
-concept indexable_member = requires(T a) {
-    { a.getIndex() } -> std::convertible_to<int>;
-};
-
-template <typename T>
-concept indexable_pointer = requires(T a) {
-    { a->getIndex() } -> std::convertible_to<int>;
-};
-
-template <typename T>
-concept indexable = indexable_member<T> || indexable_pointer<T>;
-
 }  // namespace meshark
 
 namespace fmt {
-
-template <typename T> struct formatter<mystl::observer_ptr<T>>;
 
 struct ElementFormattingParser {
     bool debug{false};
@@ -209,15 +230,15 @@ struct ElementFormattingParser {
         if (it != ctx.end() && *it == 'd') show_addr = true, ++it;
         return it;
     }
-    template <meshark::indexable T> auto id(const T& elem) const -> std::string {
+    template <meshark::traits::indexable T> auto id(const T& elem) const -> std::string {
         if (show_addr) {
-            if constexpr (meshark::indexable_member<T>) {
+            if constexpr (meshark::traits::indexable_member<T>) {
                 return fmt::format("{}", fmt::ptr(&elem));
             } else {
                 return fmt::format("{}", fmt::ptr(elem.get()));
             }
         }
-        if constexpr (meshark::indexable_member<T>) {
+        if constexpr (meshark::traits::indexable_member<T>) {
             return std::to_string(elem.getIndex());
         } else {
             return std::to_string(elem->getIndex());
@@ -230,7 +251,9 @@ template <> struct formatter<meshark::HalfEdgeElement> : ElementFormattingParser
     auto format(const meshark::HalfEdgeElement& he, FormatContext& ctx) const {
         if (debug) {
             assert(he.twin && "twin edge broken");
-            return fmt::format_to(ctx.out(), "HalfEdge(id={}, tail={}, tip={}, twin=HalfEdge({}))", id(he), he.tail, he.tip, he.twin->getIndex());
+            return fmt::format_to(
+                ctx.out(), "HalfEdge(id={}, tail={}, tip={}, twin=HalfEdge({}))", id(he), he.tail,
+                he.tip, he.twin->getIndex());
         }
         return fmt::format_to(ctx.out(), "HalfEdge({})", he.getIndex());
     }
@@ -240,7 +263,8 @@ template <> struct formatter<meshark::EdgeElement> : ElementFormattingParser {
     template <typename FormatContext>
     auto format(const meshark::EdgeElement& e, FormatContext& ctx) const {
         if (debug) {
-            return fmt::format_to(ctx.out(), "Edge(id={}, v1={}, v2={})", id(e), e.firstVertex(), e.secondVertex());
+            return fmt::format_to(
+                ctx.out(), "Edge(id={}, v1={}, v2={})", id(e), e.firstVertex(), e.secondVertex());
         } else {
             return fmt::format_to(ctx.out(), "Edge({})", e.getIndex());
         }
