@@ -25,11 +25,14 @@ target("meshark")
     add_includedirs("src/mesh/meshark/include", {public = true})
     add_includedirs("src/mesh/external/glm", {public = true})
     add_headerfiles("src/mesh/meshark/include/(**.h)")
+    add_packages("spdlog")
 
 target("project2")
     set_kind("binary")
     add_files("src/mesh/meshark/apps/simplify.cc")
     add_deps("meshark")
+    add_packages("spdlog")
+    set_rundir("$(projectdir)")
 
 --
 -- If you want to known more usage about xmake, please see https://xmake.io
