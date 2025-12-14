@@ -8,6 +8,8 @@
 #include <cassert>
 #include <meshark/element-decl.h>
 #include <meshark/element-set.h>
+#include <mystl/observer-ptr.h>
+#include <string>
 
 namespace meshark {
 
@@ -114,7 +116,8 @@ private:
         struct Iterator {
             Iterator& operator++() {
                 // TODO: implement operator++ for OutgoingHalfEdgeRange::Iterator
-
+                it = it->twin->next;
+                if (it == start) it = static_cast<HalfEdge>(nullptr);
                 return *this;
             }
 
@@ -177,69 +180,89 @@ protected:
     HalfEdge he;
 };
 inline Vertex nullVertex() { return mystl::make_observer<VertexElement>(nullptr); }
+
+template <typename T>
+concept indexable_member = requires(T a) {
+    { a.getIndex() } -> std::convertible_to<int>;
+};
+
+template <typename T>
+concept indexable_pointer = requires(T a) {
+    { a->getIndex() } -> std::convertible_to<int>;
+};
+
+template <typename T>
+concept indexable = indexable_member<T> || indexable_pointer<T>;
+
 }  // namespace meshark
 
 namespace fmt {
 
-struct DebugFormatter {
+template <typename T> struct formatter<mystl::observer_ptr<T>>;
+
+struct ElementFormattingParser {
     bool debug{false};
+    bool show_addr{false};
     constexpr auto parse(format_parse_context& ctx) {
         auto it = ctx.begin();
-        if (it != ctx.end() && *it == '?') {
-            debug = true;
-            ++it;
-        }
+        if (it != ctx.end() && *it == '?') debug = true, ++it;
+        if (it != ctx.end() && *it == 'd') show_addr = true, ++it;
         return it;
+    }
+    template <meshark::indexable T> auto id(const T& elem) const -> std::string {
+        if (show_addr) {
+            if constexpr (meshark::indexable_member<T>) {
+                return fmt::format("{}", fmt::ptr(&elem));
+            } else {
+                return fmt::format("{}", fmt::ptr(elem.get()));
+            }
+        }
+        if constexpr (meshark::indexable_member<T>) {
+            return std::to_string(elem.getIndex());
+        } else {
+            return std::to_string(elem->getIndex());
+        }
     }
 };
 
-template <> struct formatter<meshark::HalfEdgeElement> : DebugFormatter {
+template <> struct formatter<meshark::HalfEdgeElement> : ElementFormattingParser {
     template <typename FormatContext>
     auto format(const meshark::HalfEdgeElement& he, FormatContext& ctx) const {
         if (debug) {
-            return fmt::format_to(
-                ctx.out(), "HalfEdge(id={}, index={}, tail={}, tip={})", (void*)&he, he.getIndex(),
-                he.tail ? he.tail->getIndex() : -1, he.tip ? he.tip->getIndex() : -1);
-        } else {
-            return fmt::format_to(ctx.out(), "HalfEdge({})", he.getIndex());
+            assert(he.twin && "twin edge broken");
+            return fmt::format_to(ctx.out(), "HalfEdge(id={}, tail={}, tip={}, twin=HalfEdge({}))", id(he), he.tail, he.tip, he.twin->getIndex());
         }
+        return fmt::format_to(ctx.out(), "HalfEdge({})", he.getIndex());
     }
 };
 
-template <> struct formatter<meshark::EdgeElement> : DebugFormatter {
+template <> struct formatter<meshark::EdgeElement> : ElementFormattingParser {
     template <typename FormatContext>
     auto format(const meshark::EdgeElement& e, FormatContext& ctx) const {
         if (debug) {
-            return fmt::format_to(
-                ctx.out(), "Edge(id={}, index={}, v1={}, v2={})", (void*)&e, e.getIndex(),
-                e.firstVertex() ? e.firstVertex()->getIndex() : -1,
-                e.secondVertex() ? e.secondVertex()->getIndex() : -1);
+            return fmt::format_to(ctx.out(), "Edge(id={}, v1={}, v2={})", id(e), e.firstVertex(), e.secondVertex());
         } else {
             return fmt::format_to(ctx.out(), "Edge({})", e.getIndex());
         }
     }
 };
 
-template <> struct formatter<meshark::FaceElement> : DebugFormatter {
+template <> struct formatter<meshark::FaceElement> : ElementFormattingParser {
     template <typename FormatContext>
     auto format(const meshark::FaceElement& f, FormatContext& ctx) const {
         if (debug) {
-            return fmt::format_to(
-                ctx.out(), "Face(id={}, index={}, halfEdge={})", (void*)&f, f.getIndex(),
-                f.halfEdge() ? f.halfEdge()->getIndex() : -1);
+            return fmt::format_to(ctx.out(), "Face(id={}, halfEdge={})", id(f), f.halfEdge());
         } else {
             return fmt::format_to(ctx.out(), "Face({})", f.getIndex());
         }
     }
 };
 
-template <> struct formatter<meshark::VertexElement> : DebugFormatter {
+template <> struct formatter<meshark::VertexElement> : ElementFormattingParser {
     template <typename FormatContext>
     auto format(const meshark::VertexElement& v, FormatContext& ctx) const {
         if (debug) {
-            return fmt::format_to(
-                ctx.out(), "Vertex(id={}, index={}, degree={})", (void*)&v, v.getIndex(),
-                v.degree());
+            return fmt::format_to(ctx.out(), "Vertex(id={}, degree={})", id(v), v.degree());
         } else {
             return fmt::format_to(ctx.out(), "Vertex({})", v.getIndex());
         }
