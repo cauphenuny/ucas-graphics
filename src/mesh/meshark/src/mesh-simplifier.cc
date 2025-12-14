@@ -70,4 +70,24 @@ void MeshSimplifier::eraseEdgeMapping(Edge e) {
         }
     }
 }
+
+void MeshSimplifier::checkSanity() {
+    if (spdlog::default_logger()->level() >= spdlog::level::info) return;
+    spdlog::debug("Checking Sanity...");
+    assert(mesh.numEdges() == edge_collapse_cost.size());
+    assert(mesh.numVertices() == Q.size());
+    assert(mesh.numEdges() * 2 == mesh.numHalfEdges());
+    for (auto he : mesh.halfEdges()) {
+        assert(he->twin->twin == he);
+        assert(he->next->tail == he->tip);
+        assert(he->edge->halfEdge() == he || he->edge->halfEdge() == he->twin);
+        assert(he->face->halfEdge());
+    }
+    int sum_of_degrees = 0;
+    for (auto v : mesh.vertices()) {
+        sum_of_degrees += v->degree();
+    }
+    assert(sum_of_degrees == mesh.numEdges() * 2);
+}
+
 }  // namespace meshark

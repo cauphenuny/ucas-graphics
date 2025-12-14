@@ -22,6 +22,7 @@ template <typename Type> struct VertexData {
         std::swap(data[v->index], data.back());
         data.pop_back();
     }
+    size_t size() const { return data.size(); }
 
 private:
     std::vector<T> data{};
@@ -41,6 +42,7 @@ template <typename Type> struct EdgeData {
         std::swap(data[e->index], data.back());
         data.pop_back();
     }
+    size_t size() const { return data.size(); }
 
 private:
     std::vector<T> data{};
@@ -60,6 +62,7 @@ template <typename Type> struct FaceData {
         std::swap(data[f->index], data.back());
         data.pop_back();
     }
+    size_t size() const { return data.size(); }
 
 private:
     std::vector<T> data{};
