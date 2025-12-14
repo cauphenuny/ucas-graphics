@@ -10,8 +10,11 @@ int main(int argc, char** argv) {
                   << std::endl;
         return 1;
     }
-    if (argc == 5 && std::string(argv[4]) == "-v") {
-        spdlog::set_level(spdlog::level::debug);
+    if (argc == 5) {
+        if (std::string(argv[4]) == "-v")
+            spdlog::set_level(spdlog::level::debug);
+        if (std::string(argv[4]) == "-vv")
+            spdlog::set_level(spdlog::level::trace);
     } else {
         spdlog::set_level(spdlog::level::info);
     }

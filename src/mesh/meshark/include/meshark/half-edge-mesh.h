@@ -48,7 +48,7 @@ template <typename Derived> struct HalfEdgeMesh {
     }
 
     void removeVertex(Vertex v) {
-        spdlog::debug("Removing {}", v);
+        spdlog::trace("Removing {}", v);
         int idx = v->index;
         if constexpr (additional_vertex_attribute_trait<Derived>::value)
             derived().removeVertexAttribute(v);
@@ -58,12 +58,12 @@ template <typename Derived> struct HalfEdgeMesh {
         }
         std::swap(m_vertices[idx], m_vertices.back());
         m_vertices.pop_back();
-        spdlog::debug("Swapped and removed, assign index {} to {}", idx, m_vertices[idx]);
+        spdlog::trace("Swapped and removed, assign index {} to {}", idx, m_vertices[idx]);
         m_vertices[idx]->index = idx;
     }
 
     void removeFace(Face f) {
-        spdlog::debug("Removing {}", f);
+        spdlog::trace("Removing {}", f);
         int idx = f->index;
         if constexpr (additional_face_attribute_trait<Derived>::value)
             derived().removeFaceAttribute(f);
@@ -73,12 +73,12 @@ template <typename Derived> struct HalfEdgeMesh {
         }
         std::swap(m_faces[idx], m_faces.back());
         m_faces.pop_back();
-        spdlog::debug("Swapped and removed, assign index {} to {}", idx, m_faces[idx]);
+        spdlog::trace("Swapped and removed, assign index {} to {}", idx, m_faces[idx]);
         m_faces[idx]->index = idx;
     }
 
     void removeEdge(Edge e) {
-        spdlog::debug("Removing {}", e);
+        spdlog::trace("Removing {}", e);
         int idx = e->index;
         if constexpr (additional_edge_attribute_trait<Derived>::value)
             derived().removeEdgeAttribute(e);
@@ -88,12 +88,12 @@ template <typename Derived> struct HalfEdgeMesh {
         }
         std::swap(m_edges[idx], m_edges.back());
         m_edges.pop_back();
-        spdlog::debug("Swapped and removed, assign index {} to {}", idx, m_edges[idx]);
+        spdlog::trace("Swapped and removed, assign index {} to {}", idx, m_edges[idx]);
         m_edges[idx]->index = idx;
     }
 
     void removeHalfEdge(HalfEdge he) {
-        spdlog::debug("Removing {}", he);
+        spdlog::trace("Removing {}", he);
         int idx = he->index;
         if (idx == numHalfEdges() - 1) {
             m_half_edges.pop_back();
@@ -101,7 +101,7 @@ template <typename Derived> struct HalfEdgeMesh {
         }
         std::swap(m_half_edges[idx], m_half_edges.back());
         m_half_edges.pop_back();
-        spdlog::debug("Swapped and removed, assign index {} to {}", idx, m_half_edges[idx]);
+        spdlog::trace("Swapped and removed, assign index {} to {}", idx, m_half_edges[idx]);
         m_half_edges[idx]->index = idx;
     }
 
