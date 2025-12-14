@@ -39,6 +39,9 @@ private:
 
     MinCostEdgeCollapsingResult collapseMinCostEdge();
 
+    /**
+     * @brief updates vertex position, maintains face normals and edge collapse costs.
+     */
     void updateVertexPos(Vertex v, const glm::vec3& pos);
 
     [[nodiscard]] glm::mat4 computeQuadricMatrix(Vertex v) const;
@@ -53,6 +56,11 @@ private:
         edge_collapse_cost(e) = updated_cost;
         cost_edge_map.insert({updated_cost, e});
     }
+
+    void removeEdge(Edge e);
+    void removeVertex(Vertex v);
+
+    void checkSanity();
 };
 }  // namespace meshark
 #endif  // MESHSIMPLIFICATION_MESH_SIMPLIFICATION_INCLUDE_MESH_SIMPLIFICATION_MESH_SIMPLIFIER_H_

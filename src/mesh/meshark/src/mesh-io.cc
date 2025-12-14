@@ -6,13 +6,15 @@
 #include <iostream>
 #include <meshark/mesh-io.h>
 #include <sstream>
+#include <spdlog/spdlog.h>
 
 namespace meshark {
 
 std::unique_ptr<WavefrontObj> readWavefrontObj(const std::filesystem::path& path) {
     std::ifstream file(path);
     if (!file.is_open()) {
-        std::cerr << "Failed to open file: " << path << std::endl;
+        spdlog::error("Failed to open file: {}", path.string());
+        spdlog::info("Current directory: {}", std::filesystem::current_path().string());
         return {};
     }
 

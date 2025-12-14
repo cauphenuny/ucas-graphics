@@ -11,15 +11,15 @@
 namespace meshark {
 struct WavefrontObj {
     struct FaceVertex {
-        int v{-1};
-        std::optional<int> vt;
-        std::optional<int> vn;
+        int v{-1}; // vertex index
+        std::optional<int> vt; // texture index
+        std::optional<int> vn; // normal index
     };
-    std::vector<int> face_splits;
-    std::vector<FaceVertex> face_vertices;
-    std::vector<glm::vec3> positions;
-    std::vector<glm::vec2> uvs;
-    std::vector<glm::vec3> normals;
+    std::vector<int> face_splits; // indicates the start index of each face in face_vertices
+    std::vector<FaceVertex> face_vertices; // array of all face vertices
+    std::vector<glm::vec3> positions; // vertex positions
+    std::vector<glm::vec2> uvs; // texture coordinates
+    std::vector<glm::vec3> normals; // vertex normals
 };
 
 std::unique_ptr<WavefrontObj> readWavefrontObj(const std::filesystem::path& path);
