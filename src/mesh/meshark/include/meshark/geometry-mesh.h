@@ -9,8 +9,8 @@
 #include <glm/glm.hpp>
 #include <meshark/element-data.h>
 #include <meshark/half-edge-mesh.h>
-#include <spdlog/spdlog.h>
 #include <mystl/fmt.h>
+#include <spdlog/spdlog.h>
 
 namespace meshark {
 struct WavefrontObj;

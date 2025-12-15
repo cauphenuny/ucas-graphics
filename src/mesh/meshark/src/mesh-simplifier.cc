@@ -35,7 +35,7 @@ Vertex MeshSimplifier::collapseEdge(Edge e) {
      --> {vy}-->
     */
 
-    spdlog::debug("Collapsing edge: {:?&}", e);
+    spdlog::trace("Collapsing edge: {:?&}", e);
 
     // NOTE: variable with underscore suffux means it would be deleted
 
@@ -116,15 +116,13 @@ Vertex MeshSimplifier::collapseEdge(Edge e) {
 }
 
 MeshSimplifier::MinCostEdgeCollapsingResult MeshSimplifier::collapseMinCostEdge() {
-    auto min_cost_edge = cost_edge_map.begin()->second;
     // DONE: finish this function
+    auto [cost, min_cost_edge] = *cost_edge_map.begin();
+    spdlog::debug("Collapsing min-cost {} with cost {}", min_cost_edge, cost);
     if (mesh.isCollapsable(min_cost_edge)) {
         auto optimal_pos = computeOptimalCollapsePosition(min_cost_edge);
         auto vertex = collapseEdge(min_cost_edge);
         checkMeshSanity();
-        spdlog::debug(
-            "Optimal position for collapsed vertex: [{}, {}, {}]", optimal_pos.x, optimal_pos.y,
-            optimal_pos.z);
         updateVertexPos(vertex, optimal_pos);
         checkMeshSanity();
         return {Edge(), true};
@@ -153,7 +151,7 @@ void MeshSimplifier::runSimplify(Real alpha) {
     int round = 0;
     while (mesh.numEdges() > alpha * num_original_edges) {
         spdlog::info(
-            "Round {} ({} vertices, {} edges, {} faces): ", round, mesh.numVertices(),
+            "Round {} ({} vertices, {} edges, {} faces)", round, mesh.numVertices(),
             mesh.numEdges(), mesh.numFaces());
         checkMeshSanity();
         auto result = collapseMinCostEdge();
