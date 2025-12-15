@@ -2,10 +2,10 @@
 // Created by creeper on 7/20/24.
 //
 #include <meshark/mesh-simplifier.h>
-#include <ranges>
+#include <mystl/views.h>
+#include <range/v3/all.hpp>
 #include <spdlog/spdlog.h>
 #include <vector>
-#include <mystl/views.h>
 
 namespace meshark {
 
@@ -35,95 +35,81 @@ Vertex MeshSimplifier::collapseEdge(Edge e) {
      --> {vy}-->
     */
 
-    spdlog::debug("Collapsing edge: {:?}", e);
-    
+    spdlog::debug("Collapsing edge: {:?&}", e);
+
     // NOTE: variable with underscore suffux means it would be deleted
 
     auto e12_ = e->halfEdge();
-    auto e2X_ = e12_->next, eX1 = e2X_->next;
-    auto eX2_ = e2X_->twin, e1X = eX1->twin;
+    auto e2X_ = e12_->next, eX1_ = e2X_->next;
+    auto eX2 = e2X_->twin, e1X = eX1_->twin;
     auto vX = e2X_->tip;
 
-    spdlog::debug("Collapsing triangle #1:\n  e12: {:?}\n  e2X: {:?}\n  eX1: {:?}", e12_, e2X_, eX1);
+    spdlog::trace(
+        "Collapsing triangle #1:\n  e12: {:?&}\n  e2X: {:?&}\n  eX1: {:?&}", e12_, e2X_, eX1_);
 
     auto e21_ = e12_->twin;
-    auto e1Y = e21_->next, eY2_ = e1Y->next;
-    auto eY1 = e1Y->twin, e2Y_ = eY2_->twin;
-    auto vY = e1Y->tip;
+    auto e1Y_ = e21_->next, eY2_ = e1Y_->next;
+    auto eY1 = e1Y_->twin, e2Y = eY2_->twin;
+    auto vY = e1Y_->tip;
 
-    spdlog::debug("Collapsing triangle #2:\n  e21: {:?}\n  e1Y: {:?}\n  eY2: {:?}", e21_, e1Y, eY2_);
+    spdlog::trace(
+        "Collapsing triangle #2:\n  e21: {:?&}\n  e1Y: {:?&}\n  eY2: {:?&}", e21_, e1Y_, eY2_);
 
     auto v1 = e21_->tip;
     auto v2_ = e12_->tip;
 
-    spdlog::debug("Vertices:\n  v1: {:?}\n  v2: {:?}\n  vX: {:?}\n  vY: {:?}", v1, v2_, vX, vY);
-    mesh.showTopology(v1), mesh.showTopology(v2_);
-    mesh.showTopology(vX), mesh.showTopology(vY);
-
-    auto e2A = eX2_->next, eAX = e2A->next;
-    auto vA = e2A->tip;
-
-    auto eYB = e2Y_->next, eB2 = eYB->next;
-    auto vB = eYB->tip;
-
-    spdlog::debug("Merging triangle #1:\n  vA: {:?}\n  eX2: {:?}\n  e2A: {:?}\n  eAX: {:?}", vA, eX2_, e2A, eAX);
-    spdlog::debug("Merging triangle #2:\n  vB: {:?}\n  e2Y: {:?}\n  eYB: {:?}\n  eB2: {:?}", vB, e2Y_, eYB, eB2);
+    spdlog::trace("Vertices:\n  v1: {:?&}\n  v2: {:?&}\n  vX: {:?&}\n  vY: {:?&}", v1, v2_, vX, vY);
 
     auto fX_ = e12_->face;
     auto fY_ = e21_->face;
-    auto fA = eX2_->face;
-    auto fB = e2Y_->face;
 
-    spdlog::debug("Faces:\n  fX: {:?}\n  fY: {:?}\n  fA: {:?}\n  fB: {:?}", fX_, fY_, fA, fB);
+    spdlog::trace("Faces:\n  fX: {:?&}\n  fY: {:?&}\n", fX_, fY_);
 
-    // NOTE: do not change topological relations within the traversing loop!
     // gather in/out half-edges of v2 except e2/e2x/e2y (these would be deleted)
 
-    // clang-format off
-    auto out_v2 = v2_->outgoingHalfEdges()
-                | std::views::filter([=](auto h) { return !(h == e21_ || h == e2X_ || h == e2Y_); })
-                | std::ranges::to<std::vector>();
+    std::vector<std::pair<HalfEdge, HalfEdge>> v2_edges =
+        v2_->outgoingHalfEdges() |
+        ranges::views::filter([=](HalfEdge h) { return !(h->face == fX_ || h->face == fY_); }) |
+        ranges::views::transform([](HalfEdge h) { return std::make_pair(h, h->next->next); }) |
+        ranges::to<std::vector>();
 
-    auto in_v2 = out_v2
-               | std::views::transform([](HalfEdge h) { return h->twin; })
-               | std::ranges::to<std::vector>();
-    // clang-format on
-
-    spdlog::debug("Gathered out half-edges of v2: {:?}", out_v2);
-    spdlog::debug("Gathered in half-edges of v2: {:?}", in_v2);
+    spdlog::trace(
+        "Gathered out half-edges of v2: {:?&}",
+        v2_edges | ranges::views::transform([](auto p) { return p.first; }));
 
     // START!
 
     // merge v2.out, v2.in => v1
-    for (auto out : out_v2) out->tail = v1;
-    for (auto in : in_v2) in->tip = v1;
-
-    // add v2.out, v1.in to v1's half-edge list
-    for (auto out : out_v2) {
-        out->twin->next = v1->halfEdge()->twin->next;
-        v1->halfEdge()->twin->next = out;
+    for (auto [out, in] : v2_edges) {
+        out->tail = v1;
+        in->tip = v1;
     }
 
-    // merge fX+fA => new fA (comprising e2A, eAX, eX1)
-    // merge fY+fB => new fB (comprising eB2, e1Y, eYB)
-    auto fA_boundary = std::vector{e2A, eAX, eX1};
-    auto fB_boundary = std::vector{eB2, e1Y, eYB};
-    for (auto [idx, he] : mystl::views::enumerate(fA_boundary)) {
-        he->face = fA;
-        he->next = fA_boundary[(idx + 1) % fA_boundary.size()];
-    }
-    for (auto [idx, he] : mystl::views::enumerate(fB_boundary)) {
-        he->face = fB;
-        he->next = fB_boundary[(idx + 1) % fB_boundary.size()];
-    }
+    // bind e1X/eX2 to an edge
+    // bind eY1/e2Y to an edge
+    auto bind = [this](HalfEdge h1, HalfEdge h2) {
+        h1->twin = h2;
+        h2->twin = h1;
+        removeEdge(h1->edge);
+        h1->edge = h2->edge;
+        h1->edge->halfEdge() = h1;
+    };
+    bind(e1X, eX2);
+    bind(eY1, e2Y);
 
-    // delete edges e2/e2x/e2y
-    removeEdge(e), mesh.removeHalfEdge(e12_), mesh.removeHalfEdge(e21_);
-    removeEdge(e2X_->edge), mesh.removeHalfEdge(e2X_), mesh.removeHalfEdge(eX2_);
-    removeEdge(e2Y_->edge), mesh.removeHalfEdge(e2Y_), mesh.removeHalfEdge(eY2_);
+    // delete fX/fY
+    for (auto he : {eX1_, e12_, e2X_}) mesh.removeHalfEdge(he);
+    for (auto he : {eY2_, e21_, e1Y_}) mesh.removeHalfEdge(he);
+    mesh.removeFace(fX_);
+    mesh.removeFace(fY_);
 
-    // delete faces fx/fy, vertex v2
-    mesh.removeFace(fX_), mesh.removeFace(fY_);
+    // reset halfEdge() because the deleted e12_/eX1_/eY2_ might be halfEdge() before
+    v1->halfEdge() = e1X;
+    vX->halfEdge() = eX2;
+    vY->halfEdge() = eY1;
+
+    // delete v2 and e
+    removeEdge(e);
     removeVertex(v2_);
 
     return v1;
@@ -136,6 +122,9 @@ MeshSimplifier::MinCostEdgeCollapsingResult MeshSimplifier::collapseMinCostEdge(
         auto optimal_pos = computeOptimalCollapsePosition(min_cost_edge);
         auto vertex = collapseEdge(min_cost_edge);
         checkMeshSanity();
+        spdlog::debug(
+            "Optimal position for collapsed vertex: [{}, {}, {}]", optimal_pos.x, optimal_pos.y,
+            optimal_pos.z);
         updateVertexPos(vertex, optimal_pos);
         checkMeshSanity();
         return {Edge(), true};
@@ -163,7 +152,9 @@ void MeshSimplifier::runSimplify(Real alpha) {
     }
     int round = 0;
     while (mesh.numEdges() > alpha * num_original_edges) {
-        spdlog::info("Round {}: ", round);
+        spdlog::info(
+            "Round {} ({} vertices, {} edges, {} faces): ", round, mesh.numVertices(),
+            mesh.numEdges(), mesh.numFaces());
         checkMeshSanity();
         auto result = collapseMinCostEdge();
         round++;
@@ -173,7 +164,6 @@ void MeshSimplifier::runSimplify(Real alpha) {
             spdlog::warn("Min-cost edge is not collapsable, skip");
             continue;
         }
-        spdlog::info("{} edges left\n", mesh.numEdges());
     }
 }
 
@@ -185,6 +175,7 @@ glm::vec3 MeshSimplifier::computeOptimalCollapsePosition(Edge e) const {
     glm::mat3 coef(qmat);
     glm::vec3 rhs(qmat[3][0], qmat[3][1], qmat[3][2]);
     if (glm::determinant(coef) < 1e-6) {
+        spdlog::warn("Quadric matrix is singular when collapsing {}, using midpoint instead", e);
         return (mesh.pos(v1) + mesh.pos(v2)) * 0.5f;
     }
     auto pos = -glm::inverse(coef) * rhs;

@@ -48,7 +48,7 @@ template <typename Derived> struct HalfEdgeMesh {
     }
 
     void removeVertex(Vertex v) {
-        spdlog::trace("Removing {}", v);
+        spdlog::trace("Removing {:&}", v);
         int idx = v->index;
         if constexpr (additional_vertex_attribute_trait<Derived>::value)
             derived().removeVertexAttribute(v);
@@ -63,7 +63,7 @@ template <typename Derived> struct HalfEdgeMesh {
     }
 
     void removeFace(Face f) {
-        spdlog::trace("Removing {}", f);
+        spdlog::trace("Removing {:&}", f);
         int idx = f->index;
         if constexpr (additional_face_attribute_trait<Derived>::value)
             derived().removeFaceAttribute(f);
@@ -78,7 +78,7 @@ template <typename Derived> struct HalfEdgeMesh {
     }
 
     void removeEdge(Edge e) {
-        spdlog::trace("Removing {}", e);
+        spdlog::trace("Removing {:&}", e);
         int idx = e->index;
         if constexpr (additional_edge_attribute_trait<Derived>::value)
             derived().removeEdgeAttribute(e);
@@ -93,7 +93,7 @@ template <typename Derived> struct HalfEdgeMesh {
     }
 
     void removeHalfEdge(HalfEdge he) {
-        spdlog::trace("Removing {}", he);
+        spdlog::trace("Removing {:&}", he);
         int idx = he->index;
         if (idx == numHalfEdges() - 1) {
             m_half_edges.pop_back();
@@ -130,6 +130,10 @@ template <typename Derived> struct HalfEdgeMesh {
     [[nodiscard]] int index(HalfEdge h) const { return h->index; }
     [[nodiscard]] Face face(int i) const { return mystl::make_observer(m_faces[i].get()); }
     [[nodiscard]] Vertex vertex(int i) const { return mystl::make_observer(m_vertices[i].get()); }
+    [[nodiscard]] HalfEdge halfEdge(int i) const {
+        return mystl::make_observer(m_half_edges[i].get());
+    }
+
     [[nodiscard]] bool isCollapsable(Edge e) const {
         auto h1 = e->halfEdge();
         auto h2 = h1->twin;
@@ -142,22 +146,18 @@ template <typename Derived> struct HalfEdgeMesh {
 
     void showTopology(Vertex v, spdlog::level::level_enum lvl = spdlog::level::debug) {
         spdlog::log(lvl, "{} topology:", v);
-        spdlog::log(lvl, "  outgoing half-edges: {:?}", v->outgoingHalfEdges());
+        spdlog::log(lvl, "  outgoing half-edges: {:&?}", v->outgoingHalfEdges());
     }
 
     void showTopology(HalfEdge e, spdlog::level::level_enum lvl = spdlog::level::debug) {
         spdlog::log(lvl, "{} topology:", e);
         spdlog::log(lvl, "  container: {}, {}", e->edge, e->face);
-        spdlog::log(lvl, "  succ: {:?}", e->next);
-        spdlog::log(lvl, "  prev: {:?}", e->next->next);
+        spdlog::log(lvl, "  succ: {:&?}", e->next);
+        spdlog::log(lvl, "  pred: {:&?}", e->next->next);
     }
 
 protected:
     [[nodiscard]] Edge edge(int i) const { return mystl::make_observer(m_edges[i].get()); }
-
-    [[nodiscard]] HalfEdge halfEdge(int i) const {
-        return mystl::make_observer(m_half_edges[i].get());
-    }
 
     template <typename Element> struct ElementRange {
         explicit ElementRange(const std::vector<std::unique_ptr<Element>>& elements)
