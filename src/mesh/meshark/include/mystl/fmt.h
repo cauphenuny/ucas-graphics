@@ -85,17 +85,15 @@ struct formatter<Pair> : ElementwiseFormatter {
     }
 };
 
-template <std::ranges::range Range>
-    requires(!fmt::formattable<Range>)
-struct formatter<Range> : ElementwiseFormatter {
-    template <typename FormatContext> auto format(const Range& range, FormatContext& ctx) const {
+template <std::ranges::range Range> struct formatter<Range> : ElementwiseFormatter {
+    template <typename FormatContext> auto format(Range& range, FormatContext& ctx) const {
         mystl::fmt::IndentGuard indent;
         auto out = ctx.out();
         auto newline = fmt::format("\n{}", indent.current());
         auto newbaseline = fmt::format("\n{}", indent.base());
         out = fmt::format_to(out, "[{}", debug ? newline : "");
         bool first = true;
-        for (const auto& elem : range) {
+        for (auto&& elem : range) {
             if (!first) {
                 out = fmt::format_to(out, ",{}", debug ? newline : " ");
             }

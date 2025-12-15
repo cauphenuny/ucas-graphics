@@ -4,8 +4,8 @@
 #include <meshark/mesh-simplifier.h>
 #include <mystl/match.h>
 #include <mystl/views.h>
-#include <range/v3/all.hpp>
 #include <spdlog/spdlog.h>
+#include <ranges>
 #include <variant>
 #include <vector>
 
@@ -71,17 +71,17 @@ Vertex MeshSimplifier::collapseEdge(Edge e) {
 
     // gather in/out half-edges of v2, excepts those belong to fX_/fY_ which would be deleted
 
-    std::vector<std::pair<HalfEdge, HalfEdge>> v2_edges =
-        v2_->outgoingHalfEdges() |
-        ranges::views::filter([=](HalfEdge h) { return !(h->face == fX_ || h->face == fY_); }) |
-        ranges::views::transform([](HalfEdge h) { return std::make_pair(h, h->next->next); }) |
-        ranges::to<std::vector>();
+    // clang-format off
+    auto v2_outedges = v2_->outgoingHalfEdges()
+                     | std::views::filter([=](HalfEdge h) { return !(h->face == fX_ || h->face == fY_); });
 
-    spdlog::trace(
-        "Gathered out half-edges of v2: {:?&}",
-        v2_edges | ranges::views::transform([](auto p) { return p.first; }));
+    spdlog::trace("Gathered out half-edges of v2: {:?&}", v2_outedges);
 
-    // START!
+    auto v2_edges = v2_outedges
+                  | std::views::transform([](HalfEdge h) { return std::make_pair(h, h->next->next); });
+    // clang-format on
+
+    // START COLLAPSING!
 
     // merge v2.halfEdges => v1
     for (auto [out, in] : v2_edges) {

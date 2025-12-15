@@ -10,7 +10,7 @@
 #include <meshark/element-set.h>
 #include <mystl/fmt.h>
 #include <mystl/observer-ptr.h>
-#include <range/v3/all.hpp>
+#include <ranges>
 #include <string>
 
 namespace meshark {
@@ -133,7 +133,7 @@ public:
     HalfEdge& halfEdge() { return he; }
 
     [[nodiscard]] auto boundaryHalfEdges() const {
-        return ranges::subrange<BoundaryIterator>{
+        return std::ranges::subrange<BoundaryIterator>{
             BoundaryIterator{he, he}, BoundaryIterator{he, HalfEdge{nullptr}}};
     }
 
@@ -188,7 +188,7 @@ public:
     HalfEdge& halfEdge() { return he; }
 
     [[nodiscard]] auto outgoingHalfEdges() const {
-        return ranges::subrange<OutgoingHalfEdgeIterator>{
+        return std::ranges::subrange<OutgoingHalfEdgeIterator>{
             OutgoingHalfEdgeIterator{he, he}, OutgoingHalfEdgeIterator{he, HalfEdge{nullptr}}};
     }
 
@@ -290,7 +290,7 @@ template <> struct formatter<meshark::FaceElement> : ElementFormattingParser {
     auto format(const meshark::FaceElement& f, FormatContext& ctx) const {
         if (debug) {
             auto boundary_vertices =
-                f.boundaryHalfEdges() | ranges::views::transform([](auto he) { return he->tail; });
+                f.boundaryHalfEdges() | std::views::transform([](auto he) { return he->tail; });
             return fmt::format_to(
                 ctx.out(), "Face(id={}, boundary={:n})", id(f), boundary_vertices);
         }
