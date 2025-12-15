@@ -11,15 +11,20 @@ int main(int argc, char** argv) {
         return 1;
     }
     if (argc == 5) {
-        if (std::string(argv[4]) == "-v")
-            spdlog::set_level(spdlog::level::debug);
-        if (std::string(argv[4]) == "-vv")
-            spdlog::set_level(spdlog::level::trace);
+        if (std::string(argv[4]) == "-v") spdlog::set_level(spdlog::level::debug);
+        if (std::string(argv[4]) == "-vv") spdlog::set_level(spdlog::level::trace);
     } else {
         spdlog::set_level(spdlog::level::info);
     }
     auto mesh = readGeometryMeshFromWavefrontObj(argv[1]);
     std::unique_ptr<MeshSimplifier> simplifier = std::make_unique<MeshSimplifier>(*mesh);
-    simplifier->runSimplify(std::stod(argv[3]));
+    double ratio = std::stod(argv[3]);
+    std::variant<int, Real> target;
+    if (ratio < 1) {
+        target = ratio;
+    } else {
+        target = static_cast<int>(ratio);
+    }
+    simplifier->runSimplify(target);
     mesh->writeWavefrontObj(argv[2]);
 }

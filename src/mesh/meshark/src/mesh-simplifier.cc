@@ -2,9 +2,11 @@
 // Created by creeper on 7/20/24.
 //
 #include <meshark/mesh-simplifier.h>
+#include <mystl/match.h>
 #include <mystl/views.h>
 #include <range/v3/all.hpp>
 #include <spdlog/spdlog.h>
+#include <variant>
 #include <vector>
 
 namespace meshark {
@@ -141,15 +143,21 @@ Real MeshSimplifier::computeEdgeCost(Edge e) const {
     return cost;
 }
 
-void MeshSimplifier::runSimplify(Real alpha) {
+void MeshSimplifier::runSimplify(std::variant<int, Real> target) {
     for (auto v : mesh.vertices()) Q(v) = computeQuadricMatrix(v);
     for (auto e : mesh.edges()) {
         edge_collapse_cost(e) = computeEdgeCost(e);
         cost_edge_map.insert({edge_collapse_cost(e), e});
     }
     checkMeshSanity();
+
+    int target_edges = Match{target}(
+        [](int num) -> int { return num; },
+        [&](Real ratio) -> int { return ratio * num_original_edges; });
+    spdlog::info("Target: {} edges", target_edges);
+
     int round = 0;
-    while (mesh.numEdges() > alpha * num_original_edges) {
+    while (mesh.numEdges() > target_edges) {
         spdlog::info(
             "Round {} ({} vertices, {} edges, {} faces)", round, mesh.numVertices(),
             mesh.numEdges(), mesh.numFaces());
@@ -224,6 +232,7 @@ void MeshSimplifier::checkMeshSanity() {
     assert(mesh.numEdges() == edge_collapse_cost.size());
     assert(mesh.numVertices() == Q.size());
     assert(mesh.numEdges() * 2 == mesh.numHalfEdges());
+    assert(mesh.numFaces() * 3 == mesh.numHalfEdges());
 
     for (auto he : mesh.halfEdges()) {
         assert(he->twin->twin == he);

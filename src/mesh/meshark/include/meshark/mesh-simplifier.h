@@ -8,6 +8,7 @@
 #include <map>
 #include <meshark/element-data.h>
 #include <meshark/geometry-mesh.h>
+#include <variant>
 
 namespace meshark {
 using Real = double;
@@ -17,7 +18,7 @@ struct MeshSimplifier {
         : mesh(mesh), Q(mesh.numVertices()), edge_collapse_cost(mesh.numEdges()),
           num_original_edges(mesh.numEdges()) {}
 
-    void runSimplify(Real alpha);
+    void runSimplify(std::variant<int, Real> target);
 
     GeometryMesh& mesh;
 

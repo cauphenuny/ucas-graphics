@@ -140,7 +140,8 @@ template <typename Derived> struct HalfEdgeMesh {
         auto v1 = h1->tail;
         auto v2 = h2->tail;
         auto shared_neighbours = v1->adjacentVertices().computeIntersection(v2->adjacentVertices());
-        if (shared_neighbours.size() != 2) return false;  // >2: multiple plane, =1: boarder edge
+        assert(shared_neighbours.size() >= 2);  // the property of mesh
+        if (shared_neighbours.size() > 2) return false;  // >2: multiple plane, =1: boarder edge
         return true;
     }
 
