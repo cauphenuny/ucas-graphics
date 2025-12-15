@@ -4,8 +4,8 @@
 #include <meshark/mesh-simplifier.h>
 #include <mystl/match.h>
 #include <mystl/views.h>
-#include <spdlog/spdlog.h>
 #include <ranges>
+#include <spdlog/spdlog.h>
 #include <variant>
 #include <vector>
 
@@ -13,12 +13,12 @@ namespace meshark {
 
 void MeshSimplifier::removeEdge(Edge e) {
     eraseEdgeMapping(e);
-    edge_collapse_cost.removeEdgeData(e);
+    edge_collapse_cost.remove(e);
     mesh.removeEdge(e);
 }
 
 void MeshSimplifier::removeVertex(Vertex v) {
-    Q.removeVertexData(v);
+    Q.remove(v);
     mesh.removeVertex(v);
 }
 

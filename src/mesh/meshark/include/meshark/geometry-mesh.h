@@ -37,18 +37,12 @@ struct GeometryMesh : public HalfEdgeMesh<GeometryMesh> {
 
 protected:
     friend Base;
-    virtual void createVertexAttribute(const glm::vec3& vertex_pos) {
-        position.addVertexData(vertex_pos);
-    }
-    virtual void createVertexAttribute(float x, float y, float z) {
-        position.addVertexData({x, y, z});
-    }
-    virtual void removeVertexAttribute(Vertex v) { position.removeVertexData(v); }
-    virtual void createFaceAttribute(const glm::vec3& face_normal) {
-        normals.addFaceData(face_normal);
-    }
-    virtual void createFaceAttribute(float x, float y, float z) { normals.addFaceData({x, y, z}); }
-    virtual void removeFaceAttribute(Face f) { normals.removeFaceData(f); }
+    virtual void createVertexAttribute(const glm::vec3& vertex_pos) { position.append(vertex_pos); }
+    virtual void createVertexAttribute(float x, float y, float z) { position.append({x, y, z}); }
+    virtual void removeVertexAttribute(Vertex v) { position.remove(v); }
+    virtual void createFaceAttribute(const glm::vec3& face_normal) { normals.append(face_normal); }
+    virtual void createFaceAttribute(float x, float y, float z) { normals.append({x, y, z}); }
+    virtual void removeFaceAttribute(Face f) { normals.remove(f); }
     [[nodiscard]] glm::vec3 computeFaceNormal(Face f) const {
         auto h = f->halfEdge();
         auto v0 = pos(h->tail);

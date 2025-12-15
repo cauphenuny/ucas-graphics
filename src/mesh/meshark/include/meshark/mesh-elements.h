@@ -95,7 +95,7 @@ struct EdgeElement : traits::Index, traits::ToString<EdgeElement> {
 
 protected:
     template <typename Derived> friend struct HalfEdgeMesh;
-    template <typename T> friend struct EdgeData;
+    template <typename E, typename T> friend struct ElementData;
     HalfEdge he;
 };
 
@@ -143,7 +143,7 @@ public:
 
 protected:
     template <typename Derived> friend struct HalfEdgeMesh;
-    template <typename T> friend struct FaceData;
+    template <typename E, typename T> friend struct ElementData;
     HalfEdge he;
 };
 inline Face nullFace() { return mystl::make_observer<FaceElement>(nullptr); }
@@ -213,7 +213,7 @@ public:
 
 protected:
     template <typename Derived> friend struct HalfEdgeMesh;
-    template <typename T> friend struct VertexData;
+    template <typename E, typename T> friend struct ElementData;
     HalfEdge he;
 };
 inline Vertex nullVertex() { return mystl::make_observer<VertexElement>(nullptr); }
