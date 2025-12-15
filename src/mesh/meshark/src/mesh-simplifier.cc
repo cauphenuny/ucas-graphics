@@ -185,11 +185,15 @@ glm::vec3 MeshSimplifier::computeOptimalCollapsePosition(Edge e) const {
 void MeshSimplifier::updateVertexPos(Vertex v, const glm::vec3& pos) {
     // DONE: implement this function
     mesh.setVertexPos(v, pos);
+    Q(v) = computeQuadricMatrix(v);
     for (auto h : v->outgoingHalfEdges()) {
-        auto adj = h->edge;
-        updateEdgeCost(adj, computeEdgeCost(adj));
-        auto opp = h->next->edge;
-        updateEdgeCost(opp, computeEdgeCost(opp));
+        Q(h->tip) = computeQuadricMatrix(h->tip);
+    }
+    for (auto h : v->outgoingHalfEdges()) {
+        for (auto h2 : h->tip->outgoingHalfEdges()) {
+            auto e = h2->edge;
+            updateEdgeCost(e, computeEdgeCost(e));
+        }
     }
 }
 
