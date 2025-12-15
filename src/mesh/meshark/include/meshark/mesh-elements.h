@@ -10,6 +10,7 @@
 #include <meshark/element-set.h>
 #include <mystl/fmt.h>
 #include <mystl/observer-ptr.h>
+#include <range/v3/all.hpp>
 #include <string>
 
 namespace meshark {
@@ -132,7 +133,7 @@ public:
     HalfEdge& halfEdge() { return he; }
 
     [[nodiscard]] auto boundaryHalfEdges() const {
-        return std::ranges::subrange<BoundaryIterator>{
+        return ranges::subrange<BoundaryIterator>{
             BoundaryIterator{he, he}, BoundaryIterator{he, HalfEdge{nullptr}}};
     }
 
@@ -154,7 +155,7 @@ private:
         // in std::iter_difference_t
         // in std::sized_sentinel_for
         // in auto detecting subrange kind(sized or unsized)
-        // in std::ranges::subrange template parameter deduction
+        // in ranges::subrange template parameter deduction
         using difference_type = std::ptrdiff_t;
         // for ranges::views operations
         using value_type = HalfEdge;
@@ -187,7 +188,7 @@ public:
     HalfEdge& halfEdge() { return he; }
 
     [[nodiscard]] auto outgoingHalfEdges() const {
-        return std::ranges::subrange<OutgoingHalfEdgeIterator>{
+        return ranges::subrange<OutgoingHalfEdgeIterator>{
             OutgoingHalfEdgeIterator{he, he}, OutgoingHalfEdgeIterator{he, HalfEdge{nullptr}}};
     }
 
@@ -224,19 +225,27 @@ namespace fmt {
 
 struct ElementFormattingParser {
     bool debug{false};
+    bool no_name{false};
     bool show_addr{false};
     constexpr auto parse(format_parse_context& ctx) {
         auto it = ctx.begin();
-        if (it != ctx.end() && *it == '?') debug = true, ++it;
-        if (it != ctx.end() && *it == 'd') show_addr = true, ++it;
+        while (it != ctx.end()) {
+            switch (*it) {
+                case '?': debug = true; break;
+                case '&': show_addr = true; break;
+                case 'n': no_name = true; break;
+                default: return it;
+            }
+            ++it;
+        }
         return it;
     }
     template <meshark::traits::indexable T> auto id(const T& elem) const -> std::string {
         if (show_addr) {
             if constexpr (meshark::traits::indexable_member<T>) {
-                return fmt::format("{}", fmt::ptr(&elem));
+                return fmt::format("{} <{}>", elem.getIndex(), fmt::ptr(&elem));
             } else {
-                return fmt::format("{}", fmt::ptr(elem.get()));
+                return fmt::format("{} <{}>", elem.getIndex(), fmt::ptr(elem.get()));
             }
         }
         if constexpr (meshark::traits::indexable_member<T>) {
@@ -251,13 +260,15 @@ template <> struct formatter<meshark::HalfEdgeElement> : ElementFormattingParser
     template <typename FormatContext>
     auto format(const meshark::HalfEdgeElement& he, FormatContext& ctx) const {
         if (debug) {
-            auto twin = he.twin ? fmt::format("HalfEdge({})", he.twin->getIndex()) : "nullptr";
-            auto next = he.next ? fmt::format("HalfEdge({})", he.next->getIndex()) : "nullptr";
+            auto twin = he.twin ? fmt::format("{}", he.twin->getIndex()) : "nullptr";
+            auto next = he.next ? fmt::format("{}", he.next->getIndex()) : "nullptr";
             return fmt::format_to(
-                ctx.out(), "HalfEdge(id={}, tail={}, tip={}, twin={}, next={}, edge={}, face={})",
+                ctx.out(),
+                "HalfEdge(id={}, tail={:n}, tip={:n}, twin={}, next={}, edge={:n}, face={:n})",
                 id(he), he.tail, he.tip, twin, next, he.edge, he.face);
         }
-        return fmt::format_to(ctx.out(), "HalfEdge({})", he.getIndex());
+        if (no_name) return fmt::format_to(ctx.out(), "{}", id(he));
+        return fmt::format_to(ctx.out(), "HalfEdge({})", id(he));
     }
 };
 
@@ -266,10 +277,11 @@ template <> struct formatter<meshark::EdgeElement> : ElementFormattingParser {
     auto format(const meshark::EdgeElement& e, FormatContext& ctx) const {
         if (debug) {
             return fmt::format_to(
-                ctx.out(), "Edge(id={}, v1={}, v2={})", id(e), e.firstVertex(), e.secondVertex());
-        } else {
-            return fmt::format_to(ctx.out(), "Edge({})", e.getIndex());
+                ctx.out(), "Edge(id={}, v1={:n}, v2={:n})", id(e), e.firstVertex(),
+                e.secondVertex());
         }
+        if (no_name) return fmt::format_to(ctx.out(), "{}", id(e));
+        return fmt::format_to(ctx.out(), "Edge({})", id(e));
     }
 };
 
@@ -277,12 +289,13 @@ template <> struct formatter<meshark::FaceElement> : ElementFormattingParser {
     template <typename FormatContext>
     auto format(const meshark::FaceElement& f, FormatContext& ctx) const {
         if (debug) {
-            auto boundary_vertices = f.boundaryHalfEdges() |
-                                     std::views::transform([](auto he) { return he->tail; });
-            return fmt::format_to(ctx.out(), "Face(id={}, boundary={})", id(f), boundary_vertices);
-        } else {
-            return fmt::format_to(ctx.out(), "Face({})", f.getIndex());
+            auto boundary_vertices =
+                f.boundaryHalfEdges() | ranges::views::transform([](auto he) { return he->tail; });
+            return fmt::format_to(
+                ctx.out(), "Face(id={}, boundary={:n})", id(f), boundary_vertices);
         }
+        if (no_name) return fmt::format_to(ctx.out(), "{}", id(f));
+        return fmt::format_to(ctx.out(), "Face({})", id(f));
     }
 };
 
@@ -291,12 +304,12 @@ template <> struct formatter<meshark::VertexElement> : ElementFormattingParser {
     auto format(const meshark::VertexElement& v, FormatContext& ctx) const {
         if (debug) {
             return fmt::format_to(ctx.out(), "Vertex(id={}, degree={})", id(v), v.degree());
-        } else {
-            return fmt::format_to(ctx.out(), "Vertex({})", v.getIndex());
         }
+        if (no_name) return fmt::format_to(ctx.out(), "{}", id(v));
+        return fmt::format_to(ctx.out(), "Vertex({})", id(v));
     }
 };
 
 }  // namespace fmt
 
-#endif  // MESHSIMPLIFICATION_MESHARK_INCLUDE_MESHARK_MESH_ELEMENTS_H_
+#endif

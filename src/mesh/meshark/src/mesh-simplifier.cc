@@ -252,6 +252,28 @@ void MeshSimplifier::checkMeshSanity() {
         }
         sum_of_degrees += degree;
     }
+    if (sum_of_degrees != mesh.numEdges() * 2) {
+        spdlog::error("sum_of_degrees = {}, expected = {}", sum_of_degrees, mesh.numEdges() * 2);
+        // diagnostic: find half-edges not present in any vertex outgoing list
+        std::vector<char> seen(mesh.numHalfEdges(), 0);
+        for (auto v : mesh.vertices()) {
+            for (auto h : v->outgoingHalfEdges()) {
+                if (h) seen[h->getIndex()] = 1;
+            }
+        }
+        std::vector<int> missing;
+        for (auto he : mesh.halfEdges()) {
+            if (!seen[he->getIndex()]) missing.push_back(he->getIndex());
+        }
+        spdlog::error("missing half-edges (count={}): {}", missing.size(), missing);
+        for (int idx : missing) {
+            auto he = mesh.halfEdge(idx);
+            spdlog::error(
+                "HalfEdge({}) tail={}, tip={}, twin={}, next={}, edge={}, face={}", idx, he->tail,
+                he->tip, he->twin ? he->twin->getIndex() : -1, he->next ? he->next->getIndex() : -1,
+                he->edge, he->face);
+        }
+    }
     assert(sum_of_degrees == mesh.numEdges() * 2);
 
     for (auto e : mesh.edges()) {
@@ -261,6 +283,10 @@ void MeshSimplifier::checkMeshSanity() {
 
     for (auto f : mesh.faces()) {
         for (auto h : f->boundaryHalfEdges()) {
+            if (h->face != f) {
+                spdlog::error("HalfEdge {} has face {}, expected {}", h, h->face, f);
+                spdlog::error("Face {} boundary half-edges: {:?}", f, f->boundaryHalfEdges());
+            }
             assert(h->face == f);
         }
     }
