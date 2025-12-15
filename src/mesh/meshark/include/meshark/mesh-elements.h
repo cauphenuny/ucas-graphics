@@ -161,7 +161,6 @@ private:
         using value_type = HalfEdge;
 
         OutgoingHalfEdgeIterator& operator++() {
-            // TODO: implement operator++ for OutgoingHalfEdgeRange::Iterator
             it = it->twin->next;
             if (it == start) it = static_cast<HalfEdge>(nullptr);
             return *this;

@@ -67,19 +67,17 @@ Vertex MeshSimplifier::collapseEdge(Edge e) {
     auto fX_ = e12_->face;
     auto fY_ = e21_->face;
 
-    spdlog::trace("Faces:\n  fX: {:?&}\n  fY: {:?&}\n", fX_, fY_);
+    spdlog::trace("Faces:\n  fX: {:?&}\n  fY: {:?&}", fX_, fY_);
 
     // gather in/out half-edges of v2, excepts those belong to fX_/fY_ which would be deleted
 
     // clang-format off
-    auto v2_outedges = v2_->outgoingHalfEdges()
-                     | std::views::filter([=](HalfEdge h) { return !(h->face == fX_ || h->face == fY_); });
-
-    spdlog::trace("Gathered out half-edges of v2: {:?&}", v2_outedges);
-
-    auto v2_edges = v2_outedges
+    auto v2_edges = v2_->outgoingHalfEdges()
+                  | std::views::filter([=](HalfEdge h) { return !(h->face == fX_ || h->face == fY_); })
                   | std::views::transform([](HalfEdge h) { return std::make_pair(h, h->next->next); });
     // clang-format on
+
+    spdlog::trace("Gathered (out, in) half-edges of v2: {}", v2_edges);
 
     // START COLLAPSING!
 
@@ -122,6 +120,10 @@ Vertex MeshSimplifier::collapseEdge(Edge e) {
 MeshSimplifier::MinCostEdgeCollapsingResult MeshSimplifier::collapseMinCostEdge() {
     auto [cost, min_cost_edge] = *cost_edge_map.begin();
     spdlog::debug("Collapsing min-cost {} with cost {}", min_cost_edge, cost);
+    if (cost == std::numeric_limits<Real>::infinity()) {
+        spdlog::error("All remaining edges have infinite cost, can not find collapsable edge");
+        exit(1);
+    }
     if (mesh.isCollapsable(min_cost_edge)) {
         auto optimal_pos = computeOptimalCollapsePosition(min_cost_edge);
         auto vertex = collapseEdge(min_cost_edge);
