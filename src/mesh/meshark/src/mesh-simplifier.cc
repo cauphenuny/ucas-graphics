@@ -37,6 +37,8 @@ Vertex MeshSimplifier::collapseEdge(Edge e) {
 
     spdlog::trace("Collapsing edge: {:?&}", e);
 
+    // get related half-edges, vertices, faces
+
     // NOTE: variable with underscore suffux means it would be deleted
 
     auto e12_ = e->halfEdge();
@@ -65,7 +67,7 @@ Vertex MeshSimplifier::collapseEdge(Edge e) {
 
     spdlog::trace("Faces:\n  fX: {:?&}\n  fY: {:?&}\n", fX_, fY_);
 
-    // gather in/out half-edges of v2 except e2/e2x/e2y (these would be deleted)
+    // gather in/out half-edges of v2, excepts those belong to fX_/fY_ which would be deleted
 
     std::vector<std::pair<HalfEdge, HalfEdge>> v2_edges =
         v2_->outgoingHalfEdges() |
@@ -79,7 +81,7 @@ Vertex MeshSimplifier::collapseEdge(Edge e) {
 
     // START!
 
-    // merge v2.out, v2.in => v1
+    // merge v2.halfEdges => v1
     for (auto [out, in] : v2_edges) {
         out->tail = v1;
         in->tip = v1;
@@ -103,20 +105,19 @@ Vertex MeshSimplifier::collapseEdge(Edge e) {
     mesh.removeFace(fX_);
     mesh.removeFace(fY_);
 
-    // reset halfEdge() because the deleted e12_/eX1_/eY2_ might be halfEdge() before
+    // reset halfEdge() because those deleted e12_/eX1_/eY2_ might be the halfEdge() before
     v1->halfEdge() = e1X;
     vX->halfEdge() = eX2;
     vY->halfEdge() = eY1;
 
     // delete v2 and e
-    removeEdge(e);
     removeVertex(v2_);
+    removeEdge(e);
 
     return v1;
 }
 
 MeshSimplifier::MinCostEdgeCollapsingResult MeshSimplifier::collapseMinCostEdge() {
-    // DONE: finish this function
     auto [cost, min_cost_edge] = *cost_edge_map.begin();
     spdlog::debug("Collapsing min-cost {} with cost {}", min_cost_edge, cost);
     if (mesh.isCollapsable(min_cost_edge)) {
@@ -124,7 +125,6 @@ MeshSimplifier::MinCostEdgeCollapsingResult MeshSimplifier::collapseMinCostEdge(
         auto vertex = collapseEdge(min_cost_edge);
         checkMeshSanity();
         updateVertexPos(vertex, optimal_pos);
-        checkMeshSanity();
         return {Edge(), true};
     } else {
         return {min_cost_edge, false};
@@ -132,7 +132,6 @@ MeshSimplifier::MinCostEdgeCollapsingResult MeshSimplifier::collapseMinCostEdge(
 }
 
 Real MeshSimplifier::computeEdgeCost(Edge e) const {
-    // DONE: Implement this function
     auto v1 = e->firstVertex();
     auto v2 = e->secondVertex();
     auto qmat = Q(v1) + Q(v2);
@@ -148,12 +147,12 @@ void MeshSimplifier::runSimplify(Real alpha) {
         edge_collapse_cost(e) = computeEdgeCost(e);
         cost_edge_map.insert({edge_collapse_cost(e), e});
     }
+    checkMeshSanity();
     int round = 0;
     while (mesh.numEdges() > alpha * num_original_edges) {
         spdlog::info(
             "Round {} ({} vertices, {} edges, {} faces)", round, mesh.numVertices(),
             mesh.numEdges(), mesh.numFaces());
-        checkMeshSanity();
         auto result = collapseMinCostEdge();
         round++;
         if (!result.is_collapsable) {
@@ -166,7 +165,6 @@ void MeshSimplifier::runSimplify(Real alpha) {
 }
 
 glm::vec3 MeshSimplifier::computeOptimalCollapsePosition(Edge e) const {
-    // DONE: computes formula argmin_{v}(v^T Q v)
     auto v1 = e->firstVertex();
     auto v2 = e->secondVertex();
     glm::mat4 qmat = Q(v1) + Q(v2);
@@ -181,7 +179,6 @@ glm::vec3 MeshSimplifier::computeOptimalCollapsePosition(Edge e) const {
 }
 
 void MeshSimplifier::updateVertexPos(Vertex v, const glm::vec3& pos) {
-    // DONE: implement this function
     mesh.setVertexPos(v, pos);
     Q(v) = computeQuadricMatrix(v);
     for (auto h : v->outgoingHalfEdges()) {
@@ -196,7 +193,6 @@ void MeshSimplifier::updateVertexPos(Vertex v, const glm::vec3& pos) {
 }
 
 glm::mat4 MeshSimplifier::computeQuadricMatrix(Vertex v) const {
-    // DONE: implement this function
     auto result = glm::mat4(0.0f);
     for (auto h : v->outgoingHalfEdges()) {
         auto f = h->face;
