@@ -4,6 +4,7 @@ add_requires("opengl", {system = true})
 add_requires("glut", {system = true})
 add_requires("glfw3", {system = true})
 add_requires("spdlog", {system = true})
+add_requires("range-v3")
 add_requires("magic_enum")
 
 target("project1")
@@ -26,12 +27,14 @@ target("meshark")
     add_includedirs("src/mesh/external/glm", {public = true})
     add_headerfiles("src/mesh/meshark/include/(**.h)")
     add_packages("spdlog")
+    add_packages("range-v3")
 
 target("project2")
     set_kind("binary")
     add_files("src/mesh/meshark/apps/simplify.cc")
     add_deps("meshark")
     add_packages("spdlog")
+    add_packages("range-v3")
     set_rundir("$(projectdir)")
 
 --
