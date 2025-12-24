@@ -6,8 +6,8 @@ using namespace meshark;
 
 int main(int argc, char** argv) {
     if (argc != 4 && argc != 5) {
-        std::cerr << "Usage: " << argv[0] << " <input obj path> <output obj path> <ratio> [-v]"
-                  << std::endl;
+        std::cerr << "Usage: " << argv[0]
+                  << " <input obj path> <output obj path> <ratio|num_edges> [-v|-vv]" << std::endl;
         return 1;
     }
     if (argc == 5) {
