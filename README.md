@@ -15,3 +15,7 @@ xmake run project1
 
   ![architecture](docs/src/basics/assets/architecture.png)
 
+- [Project2: Mesh Simplification](docs/p2-mesh.pdf)
+
+  ![demo](docs/src/mesh/assets/demo.png)
+
