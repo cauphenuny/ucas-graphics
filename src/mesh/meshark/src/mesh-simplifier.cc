@@ -1,7 +1,9 @@
 //
 // Created by creeper on 7/20/24.
 //
+#include <glm/glm.hpp>
 #include <meshark/mesh-simplifier.h>
+#include <mystl/fmt.h>
 #include <mystl/match.h>
 #include <mystl/views.h>
 #include <ranges>
@@ -63,6 +65,9 @@ Vertex MeshSimplifier::collapseEdge(Edge e) {
     auto v2_ = e12_->tip;
 
     spdlog::trace("Vertices:\n  v1: {:?&}\n  v2: {:?&}\n  vX: {:?&}\n  vY: {:?&}", v1, v2_, vX, vY);
+    spdlog::trace(
+        "Positions:\n  v1: {}\n  v2: {}\n  vX: {}\n  vY: {}", mesh.pos(v1), mesh.pos(v2_),
+        mesh.pos(vX), mesh.pos(vY));
 
     auto fX_ = e12_->face;
     auto fY_ = e21_->face;
@@ -124,8 +129,8 @@ MeshSimplifier::MinCostEdgeCollapsingResult MeshSimplifier::collapseMinCostEdge(
         spdlog::error("All remaining edges have infinite cost, can not find collapsable edge");
         exit(1);
     }
-    if (mesh.isCollapsable(min_cost_edge)) {
-        auto optimal_pos = computeOptimalCollapsePosition(min_cost_edge);
+    auto optimal_pos = computeOptimalCollapsePosition(min_cost_edge);
+    if (mesh.isCollapsable(min_cost_edge, optimal_pos)) {
         auto vertex = collapseEdge(min_cost_edge);
         checkMeshSanity();
         updateVertexPos(vertex, optimal_pos);
@@ -180,8 +185,10 @@ glm::vec3 MeshSimplifier::computeOptimalCollapsePosition(Edge e) const {
     glm::mat4 qmat = Q(v1) + Q(v2);
     glm::mat3 coef(qmat);
     glm::vec3 rhs(qmat[3][0], qmat[3][1], qmat[3][2]);
+    spdlog::trace(
+        "Computing optimal collapse position for edge {} (det={:.2e}):", e, glm::determinant(coef));
     if (glm::determinant(coef) < 1e-6) {
-        spdlog::warn("Quadric matrix is singular when collapsing {}, using midpoint instead", e);
+        spdlog::debug("Quadric matrix is singular when collapsing {}, using midpoint", e);
         return (mesh.pos(v1) + mesh.pos(v2)) * 0.5f;
     }
     auto pos = -glm::inverse(coef) * rhs;

@@ -7,6 +7,7 @@
 #include <map>
 #include <meshark/geometry-mesh.h>
 #include <meshark/mesh-io.h>
+#include <ranges>
 
 namespace meshark {
 
@@ -71,4 +72,35 @@ void GeometryMesh::writeWavefrontObj(const std::filesystem::path& path) const {
     }
     file.close();
 }
+
+bool GeometryMesh::isCollapsable(Edge e, glm::vec3 target) const {
+    if (!HalfEdgeMesh::isCollapsable(e)) return false;
+    auto v1 = e->firstVertex();
+    auto v2 = e->secondVertex();
+    namespace rv = std::ranges::views;
+    auto check = [=, this](Vertex v1, Vertex v2) {
+        // clang-format off
+        auto halfedges = v1->outgoingHalfEdges()
+                        | rv::filter([v2](HalfEdge h){ return h->tip != v2;});
+        // clang-format on
+        for (auto he : halfedges) {
+            auto norm = normals(he->face);
+            auto va = he->tip;
+            auto vb = he->next->tip;
+            auto cross = glm::cross(pos(va) - target, pos(vb) - target);
+            if (glm::length(cross) < 1e-6) {
+                spdlog::warn("Collapse {} would result in degenerate face", e);
+                return false;  // collapse to line
+            }
+            auto new_norm = glm::normalize(cross);
+            if (glm::dot(norm, new_norm) < 1e-3) {
+                spdlog::warn("Collapse {} would invert face {}", e, he->face);
+                return false;  // face inverted
+            }
+        }
+        return true;
+    };
+    return check(v1, v2) && check(v2, v1);
+}
+
 }  // namespace meshark

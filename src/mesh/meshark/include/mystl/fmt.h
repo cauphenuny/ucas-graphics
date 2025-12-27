@@ -3,7 +3,7 @@
 #include <fmt/format.h>
 #include <memory>
 #include <mystl/observer-ptr.h>
-#include <ranges>
+#include <glm/glm.hpp>
 
 namespace mystl::fmt {
 
@@ -102,6 +102,13 @@ template <std::ranges::range Range> struct formatter<Range> : ElementwiseFormatt
         }
         out = fmt::format_to(out, "{}]", debug ? newbaseline : "");
         return out;
+    }
+};
+
+template <> struct formatter<glm::vec3> {
+    constexpr auto parse(fmt::format_parse_context& ctx) { return ctx.begin(); }
+    template <typename FormatContext> auto format(const glm::vec3& v, FormatContext& ctx) const {
+        return fmt::format_to(ctx.out(), "({}, {}, {})", v.x, v.y, v.z);
     }
 };
 

@@ -34,6 +34,7 @@ struct GeometryMesh : public HalfEdgeMesh<GeometryMesh> {
             normals(f) = computeFaceNormal(f);
         }
     }
+    [[nodiscard]] bool isCollapsable(Edge e, glm::vec3 target) const;
 
 protected:
     friend Base;
