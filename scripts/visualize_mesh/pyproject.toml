@@ -1,0 +1,14 @@
+[project]
+name = "visualize-mesh"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=2.2.6",
+    "pillow>=12.0.0",
+    "pyglet>=2.1.11",
+    "pyopengl>=3.1.0",
+    "pyrender>=0.1.45",
+    "trimesh>=4.10.1",
+]
