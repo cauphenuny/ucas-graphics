@@ -34,6 +34,18 @@ target("project2")
     add_packages("spdlog")
     set_rundir("$(projectdir)")
 
+target("project3")
+    set_kind("binary")
+    add_files("src/ray/main.cpp")
+    add_includedirs("src/ray")
+    add_packages("opengl")
+    add_packages("glut")
+    add_packages("glfw3")
+    if is_plat("macosx") then
+        add_frameworks("Cocoa", "CoreFoundation", "IOKit")
+    end
+    set_rundir("$(projectdir)")
+
 --
 -- If you want to known more usage about xmake, please see https://xmake.io
 --
