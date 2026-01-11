@@ -1,7 +1,7 @@
-#include "canvas.hpp"
-#include "color.hpp"
-#include "entity.hpp"
-#include "painter.hpp"
+#include "glxx/canvas.hpp"
+#include "glxx/color.hpp"
+#include "glxx/entity.hpp"
+#include "glxx/painter.hpp"
 
 #include <memory>
 #include <set>
