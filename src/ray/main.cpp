@@ -1,9 +1,11 @@
 #include "render/render.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <format>
 #include <fstream>
 #include <iostream>
-#include <spdlog/spdlog.h>
+#include <opencv2/opencv.hpp>
 #include <vector>
 
 template <typename T>
@@ -17,24 +19,18 @@ void dump(std::vector<Vec3<T>> image, int width, int height, std::ofstream& ofs)
     }
 }
 
-int main(int argc, char** argv) {
-    if (argc < 2) {
-        std::cerr << std::format("Usage: {} <output_image_path>\n", argv[0]);
-        return 1;
-    }
-    const char* output_image_path = argv[1];
+using CoordT = double;
+using RenderT = double;
 
-    using CoordT = float;
-    using RenderT = float;
+using S = Sphere<CoordT, RenderT>;
+using Cam = Camera<CoordT>;
 
-    using S = Sphere<CoordT, RenderT>;
-    using Camera = Camera<CoordT>;
-
+auto build() {
     std::vector<S> spheres;
     spheres.push_back(
         S::conf()
-            .center(0.0, -10004, -20)
-            .radius(10000)
+            .center(0.0, -1000004, -20)
+            .radius(1000000)
             .surface_color(0.2, 0.2, 0.2)
             .emission_color(0));
     spheres.push_back(
@@ -69,13 +65,100 @@ int main(int argc, char** argv) {
     // light
     spheres.push_back(S::conf().center(0.0, 20, -30).radius(3).emission_color(1));
 
-    auto camera = Camera{
-        .width = 1280,
-        .height = 720,
+    return spheres;
+}
+
+int main(int argc, char** argv) {
+    auto scene = build();
+
+    auto camera = Cam{
+        .width = 1920,
+        .height = 1080,
+        .position = {0, 0, 10},
+        .look_at = {0, 0, -20},
     };
-    auto image = render(camera, spheres, Vec3<RenderT>{2.}, 5);
-    std::ofstream ofs(output_image_path, std::ios::binary | std::ios::out);
-    dump(image, camera.width, camera.height, ofs);
-    ofs.close();
+
+    Vec3<CoordT> offset = camera.position - camera.look_at;
+    CoordT radius = offset.norm();
+    double yaw = std::atan2(offset.x, offset.z);
+    double pitch = std::asin(offset.y / radius);
+    const double pi = std::acos(-1.0);
+    const double pitch_limit = pi / 2.0 - 0.01;
+    constexpr double angle_step = 0.02, radius_step = 0.5;
+
+    auto update_position = [&]() {
+        CoordT cos_pitch = std::cos(pitch);
+        camera.position.x = camera.look_at.x + radius * cos_pitch * std::sin(yaw);
+        camera.position.z = camera.look_at.z + radius * cos_pitch * std::cos(yaw);
+        camera.position.y = camera.look_at.y + radius * std::sin(pitch);
+    };
+
+    cv::namedWindow("path_tracer", cv::WINDOW_AUTOSIZE);
+
+    std::vector<Vec3<RenderT>> image;
+    auto render_frame = [&]() {
+        image = render(camera, scene, Vec3<RenderT>{2}, 5);
+        cv::Mat frame(camera.height, camera.width, CV_8UC3);
+        for (unsigned y = 0; y < camera.height; ++y) {
+            for (unsigned x = 0; x < camera.width; ++x) {
+                auto pixel = image[y * camera.width + x];
+                auto to_byte = [](RenderT value) {
+                    return static_cast<unsigned char>(
+                        std::clamp(value, RenderT(0), RenderT(1)) * 255);
+                };
+                frame.at<cv::Vec3b>(y, x) = cv::Vec3b(
+                    to_byte(pixel.z), to_byte(pixel.y), to_byte(pixel.x));
+            }
+        }
+        cv::imshow("path_tracer", frame);
+    };
+
+    render_frame();
+
+    std::cerr << "Running path tracer. Use 'h','j','k','l' to rotate camera, 'i' and 'o' to zoom in and out. Press ESC to exit."
+              << std::endl;
+
+    bool running = true;
+    while (running) {
+        int key = cv::waitKey(30);
+        bool moved = false;
+        switch (key) {
+            case 'h':
+                yaw -= angle_step;
+                moved = true;
+                break;
+            case 'l':
+                yaw += angle_step;
+                moved = true;
+                break;
+            case 'j':
+                pitch = std::max(-pitch_limit, pitch - angle_step);
+                moved = true;
+                break;
+            case 'k':
+                pitch = std::min(pitch_limit, pitch + angle_step);
+                moved = true;
+                break;
+            case 'i':
+                radius = std::max(1.0, radius - radius_step);
+                moved = true;
+                break;
+            case 'o':
+                radius += radius_step;
+                moved = true;
+                break;
+            case 27:
+                running = false;
+                break;
+            default:
+                break;
+        }
+        if (moved) {
+            update_position();
+            render_frame();
+        }
+    }
+
+    cv::destroyWindow("path_tracer");
     return 0;
 }

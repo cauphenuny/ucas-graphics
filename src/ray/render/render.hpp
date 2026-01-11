@@ -89,25 +89,38 @@ Vec3<RenderT> trace(
 template <typename CoordT> struct Camera {
     unsigned width{640}, height{480};
     CoordT fov{30};
+    Vec3<CoordT> position{0, 0, 0};
+    Vec3<CoordT> look_at{0, 0, -1};
 };
 
 template <typename CoordT, typename RenderT, typename Container>
 auto render(
-    Camera<CoordT> camera, Container object, Vec3<RenderT> background_color, int max_depth) {
+    Camera<CoordT> camera, const Container& object, Vec3<RenderT> background_color, int max_depth) {
     std::vector<Vec3<RenderT>> image(camera.width * camera.height);
     CoordT inv_width = 1 / CoordT(camera.width);
     CoordT inv_height = 1 / CoordT(camera.height);
     CoordT aspect_ratio = CoordT(camera.width) / CoordT(camera.height);
     CoordT angle = std::tan(M_PI * 0.5 * camera.fov / 180.);
+    Vec3<CoordT> forward = camera.look_at - camera.position;
+    forward.normalize();
+    Vec3<CoordT> world_up(0, 1, 0);
+    Vec3<CoordT> right = forward.cross(world_up);
+    if (right.sqrnorm() == CoordT(0)) {
+        world_up = Vec3<CoordT>(0, 0, 1);
+        right = forward.cross(world_up);
+    }
+    right.normalize();
+    Vec3<CoordT> up = right.cross(forward);
+    up.normalize();
 
     for (unsigned y = 0; y < camera.height; ++y) {
         for (unsigned x = 0; x < camera.width; ++x) {
             CoordT xx = (2 * ((x + 0.5) * inv_width) - 1) * angle * aspect_ratio;
             CoordT yy = (1 - 2 * ((y + 0.5) * inv_height)) * angle;
-            Vec3<CoordT> ray_direction(xx, yy, -1);
+            Vec3<CoordT> ray_direction = forward + right * xx + up * yy;
             ray_direction.normalize();
             image[y * camera.width + x] =
-                trace(Vec3<CoordT>(0), ray_direction, object, background_color, max_depth);
+                trace(camera.position, ray_direction, object, background_color, max_depth);
         }
     }
     return image;

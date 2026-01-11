@@ -52,6 +52,13 @@ template <typename T> struct Vec3 {
     }
 
     T dot(const Vec3<T>& other) const { return x * other.x + y * other.y + z * other.z; }
+
+    Vec3<T> cross(const Vec3<T>& other) const {
+        return Vec3<T>(
+            y * other.z - z * other.y,
+            z * other.x - x * other.z,
+            x * other.y - y * other.x);
+    }
 };
 
 template <typename T, typename CharT> struct std::formatter<Vec3<T>, CharT> {
