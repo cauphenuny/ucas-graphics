@@ -47,6 +47,11 @@ public:
     double sqrnorm() const { return x() * x() + y() * y() + z() * z(); }
     double norm() const { return std::sqrt(sqrnorm()); }
     Vec3 normalized() const;
+    bool near_zero() const {
+        auto s = 1e-8;
+        return (std::fabs(x()) < s) && (std::fabs(y()) < s) && (std::fabs(z()) < s);
+    }
+
     friend double dot(const Vec3& u, const Vec3& v);
     friend Vec3 cross(const Vec3& u, const Vec3& v);
 
@@ -100,6 +105,8 @@ inline Vec3 cross(const Vec3& u, const Vec3& v) {
         u.y() * v.z() - u.z() * v.y(), u.z() * v.x() - u.x() * v.z(),
         u.x() * v.y() - u.y() * v.x());
 }
+
+inline Vec3 reflect(const Vec3& v, const Vec3& n) { return v - 2 * dot(v, n) * n; }
 
 inline Vec3 Vec3::normalized() const { return *this / norm(); }
 

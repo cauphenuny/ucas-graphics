@@ -4,11 +4,16 @@
 #include "ray.h"
 #include "vec.h"
 
+#include <memory>
+
+class Material;
+
 struct HitResult {
     Point3 p;
     Vec3 normal;
     double t;
     bool front_face;
+    std::shared_ptr<Material> mat;
 
     /**
      * @brief set normal vector, considering the ray direction
