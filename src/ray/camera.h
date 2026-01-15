@@ -13,6 +13,7 @@ struct Camera {
 public:
     double aspect_ratio = 1.0;
     int image_width = 100;
+    int samples_per_pixel = 10;
 
     auto render(const Hittable& world) -> RenderResult {
         initialize();
@@ -23,6 +24,12 @@ public:
                 auto pixel_loc = pixel00_loc + i * pixel_delta_u + j * pixel_delta_v;
                 Ray r(center, pixel_loc - center);
                 image[j * image_width + i] = ray_color(r, world);
+                Color pixel_color(0, 0, 0);
+                for (int sample = 0; sample < samples_per_pixel; sample++) {
+                    Ray r = get_ray(i, j);
+                    pixel_color += ray_color(r, world);
+                }
+                image[j * image_width + i] = pixel_color * pixel_samples_scale;
             }
         }
         return RenderResult{.width = image_width, .height = image_height, .data = std::move(image)};
@@ -30,15 +37,18 @@ public:
 
 private:
     int image_height;
-    Point3 center;
-    Point3 pixel00_loc;
-    Vec3 pixel_delta_u;
-    Vec3 pixel_delta_v;
+    Point3 center;       // camera center
+    Point3 pixel00_loc;  // Location of pixel (0,0)
+    Vec3 pixel_delta_u;  // offset of one pixel in u-direction
+    Vec3 pixel_delta_v;  // offset of one pixel in v-direction
+    double pixel_samples_scale;
 
     void initialize() {
         image_height = std::max(static_cast<int>(image_width / aspect_ratio), 1);
         auto ratio = (double)image_width / (double)image_height;
         center = Point3(0., 0., 0.);
+
+        pixel_samples_scale = 1.0 / samples_per_pixel;
 
         // viewport dimensions
         auto focal_length = 1.0;
@@ -56,7 +66,16 @@ private:
         pixel00_loc = viewport_upper_left + pixel_delta_u / 2 + pixel_delta_v / 2;
     }
 
-    Color ray_color(const Ray& ray, const Hittable& world) const {
+    auto sample_square() const { return Vec3{random_double() - 0.5, random_double() - 0.5, 0.0}; }
+
+    auto get_ray(int i, int j) const -> Ray {
+        auto offset = sample_square();
+        auto pixel_sample =
+            pixel00_loc + ((i + offset.x()) * pixel_delta_u) + ((j + offset.y()) * pixel_delta_v);
+        return Ray(center, pixel_sample - center);
+    }
+
+    auto ray_color(const Ray& ray, const Hittable& world) -> Vec3 const {
         auto center = Point3(0, 0, -1);
         HitResult result;
         if (world.hit(ray, Interval(0, infinity), result)) {

@@ -12,6 +12,12 @@ struct Interval {
 
     bool surrounds(double x) const { return min < x && x < max; }
 
+    double clamp(double x) const {
+        if (x < min) return min;
+        if (x > max) return max;
+        return x;
+    }
+
     static const Interval empty() { return Interval(+infinity, -infinity); }
 
     static const Interval universe() { return Interval(-infinity, +infinity); }

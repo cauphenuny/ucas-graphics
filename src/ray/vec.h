@@ -106,10 +106,10 @@ public:
     double g() const { return y(); }
     double b() const { return z(); }
     std::tuple<uint8_t, uint8_t, uint8_t> to_byte() const {
-        auto red = std::clamp(r(), 0.0, 1.0);
-        auto green = std::clamp(g(), 0.0, 1.0);
-        auto blue = std::clamp(b(), 0.0, 1.0);
-        return std::make_tuple(int(255.999 * red), int(255.999 * green), int(255.999 * blue));
+        auto red = std::clamp(r(), 0.0, 0.9999);
+        auto green = std::clamp(g(), 0.0, 0.9999);
+        auto blue = std::clamp(b(), 0.0, 0.9999);
+        return std::make_tuple(int(256 * red), int(256 * green), int(256 * blue));
     }
 };
 

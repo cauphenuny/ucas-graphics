@@ -16,6 +16,7 @@ int main(int argc, char** argv) {
     Camera cam;
     cam.aspect_ratio = 16.0 / 9.0;
     cam.image_width = 800;
+    cam.samples_per_pixel = 100;
     auto image = cam.render(world);
 
     auto file = std::ofstream(argv[1], std::ios::binary | std::ios::out);
