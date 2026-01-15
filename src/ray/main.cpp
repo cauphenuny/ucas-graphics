@@ -25,9 +25,16 @@ int main(int argc, char** argv) {
     world.add(std::make_shared<Sphere>(Point3(1.0, 0.0, -1.0), 0.5, meterial_right));
 
     Camera cam;
+
     cam.aspect_ratio = 16.0 / 9.0;
     cam.image_width = 800;
     cam.samples_per_pixel = 100;
+
+    cam.vfov = 20;
+    cam.lookfrom = Point3(-2, 2, 1);
+    cam.lookat = Point3(0, 0, -1);
+    cam.vup = Vec3(0, 1, 0);
+
     auto image = cam.render(world);
 
     auto file = std::ofstream(argv[1], std::ios::binary | std::ios::out);
