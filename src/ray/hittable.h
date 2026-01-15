@@ -22,22 +22,22 @@ struct HitResult {
     }
 };
 
-class Object {
+class Hittable {
 public:
-    virtual ~Object() = default;
+    virtual ~Hittable() = default;
     virtual bool hit(const Ray& ray, Interval interval, HitResult& result) const = 0;
 };
 
-class ObjectSet : public Object {
-    std::vector<std::shared_ptr<Object>> objects;
+class Objects : public Hittable {
+    std::vector<std::shared_ptr<Hittable>> objects;
 
 public:
-    ObjectSet() = default;
-    ObjectSet(const std::shared_ptr<Object>& object) { add(object); }
+    Objects() = default;
+    Objects(const std::shared_ptr<Hittable>& object) { add(object); }
 
     void clear() { objects.clear(); }
 
-    void add(const std::shared_ptr<Object>& object) { objects.push_back(object); }
+    void add(const std::shared_ptr<Hittable>& object) { objects.push_back(object); }
 
     bool hit(const Ray& ray, Interval interval, HitResult& result) const override {
         HitResult temp_result;

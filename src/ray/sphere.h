@@ -1,10 +1,10 @@
 #pragma once
 
-#include "object.h"
+#include "hittable.h"
 #include "ray.h"
 #include "vec.h"
 
-class Sphere : public Object {
+class Sphere : public Hittable {
     double radius;
     Point3 center;
 

@@ -1,0 +1,70 @@
+#pragma once
+
+#include "hittable.h"
+
+#include <vector>
+
+struct RenderResult {
+    int width, height;
+    std::vector<Color> data;
+};
+
+struct Camera {
+public:
+    double aspect_ratio = 1.0;
+    int image_width = 100;
+
+    auto render(const Hittable& world) -> RenderResult {
+        initialize();
+        auto image = std::vector<Color>(image_width * image_height);
+
+        for (int j = 0; j < image_height; ++j) {
+            for (int i = 0; i < image_width; ++i) {
+                auto pixel_loc = pixel00_loc + i * pixel_delta_u + j * pixel_delta_v;
+                Ray r(center, pixel_loc - center);
+                image[j * image_width + i] = ray_color(r, world);
+            }
+        }
+        return RenderResult{.width = image_width, .height = image_height, .data = std::move(image)};
+    }
+
+private:
+    int image_height;
+    Point3 center;
+    Point3 pixel00_loc;
+    Vec3 pixel_delta_u;
+    Vec3 pixel_delta_v;
+
+    void initialize() {
+        image_height = std::max(static_cast<int>(image_width / aspect_ratio), 1);
+        auto ratio = (double)image_width / (double)image_height;
+        center = Point3(0., 0., 0.);
+
+        // viewport dimensions
+        auto focal_length = 1.0;
+        auto viewport_height = 2.0;
+        auto viewport_width = ratio * viewport_height;
+
+        // calculate vectors and delta-vectors
+        auto viewport_u = Vec3(viewport_width, 0., 0.);
+        auto viewport_v = Vec3(0., -viewport_height, 0.);
+        pixel_delta_u = viewport_u / image_width;
+        pixel_delta_v = viewport_v / image_height;
+
+        auto viewport_upper_left =
+            center - Vec3(0, 0, focal_length) - viewport_u / 2 - viewport_v / 2;
+        pixel00_loc = viewport_upper_left + pixel_delta_u / 2 + pixel_delta_v / 2;
+    }
+
+    Color ray_color(const Ray& ray, const Hittable& world) const {
+        auto center = Point3(0, 0, -1);
+        HitResult result;
+        if (world.hit(ray, Interval(0, infinity), result)) {
+            return 0.5 * Color(result.normal + Vec3(1, 1, 1));
+        }
+
+        Vec3 unit_direction = ray.direction().normalized();
+        auto a = 0.5 * (unit_direction.y() + 1.0);
+        return (1.0 - a) * Color(1., 1., 1.) + a * Color(0.5, 0.7, 1.0);
+    }
+};
