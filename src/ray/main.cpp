@@ -11,7 +11,7 @@
 Color ray_color(const Ray& r, const Object& world) {
     auto center = Point3(0, 0, -1);
     HitResult result;
-    if (world.hit(r, 0, infinity, result)) {
+    if (world.hit(r, Interval(0, infinity), result)) {
         return 0.5 * Color(result.normal + Vec3(1, 1, 1));
     }
 
