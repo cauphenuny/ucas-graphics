@@ -76,6 +76,14 @@ public:
         else
             return -vec;
     }
+    static Vec3 random_in_unit_disk() {
+        while (true) {
+            auto p = Vec3(random_double(-1, 1), random_double(-1, 1), 0);
+            if (p.sqrnorm() < 1) {
+                return p;
+            }
+        }
+    }
 };
 
 inline Vec3 operator+(const Vec3& u, const Vec3& v) {
