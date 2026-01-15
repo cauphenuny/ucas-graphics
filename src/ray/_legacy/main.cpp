@@ -72,8 +72,8 @@ int main(int argc, char** argv) {
     auto scene = build();
 
     auto camera = Cam{
-        .width = 1920,
-        .height = 1080,
+        .width = 1280,
+        .height = 800,
         .position = {0, 0, 10},
         .look_at = {0, 0, -20},
     };
@@ -106,8 +106,8 @@ int main(int argc, char** argv) {
                     return static_cast<unsigned char>(
                         std::clamp(value, RenderT(0), RenderT(1)) * 255);
                 };
-                frame.at<cv::Vec3b>(y, x) = cv::Vec3b(
-                    to_byte(pixel.z), to_byte(pixel.y), to_byte(pixel.x));
+                frame.at<cv::Vec3b>(y, x) =
+                    cv::Vec3b(to_byte(pixel.z), to_byte(pixel.y), to_byte(pixel.x));
             }
         }
         cv::imshow("path_tracer", frame);
@@ -115,7 +115,8 @@ int main(int argc, char** argv) {
 
     render_frame();
 
-    std::cerr << "Running path tracer. Use 'h','j','k','l' to rotate camera, 'i' and 'o' to zoom in and out. Press ESC to exit."
+    std::cerr << "Running path tracer. Use 'h','j','k','l' to rotate camera, 'i' and 'o' to zoom "
+                 "in and out. Press ESC to exit."
               << std::endl;
 
     bool running = true;
@@ -147,11 +148,8 @@ int main(int argc, char** argv) {
                 radius += radius_step;
                 moved = true;
                 break;
-            case 27:
-                running = false;
-                break;
-            default:
-                break;
+            case 27: running = false; break;
+            default: break;
         }
         if (moved) {
             update_position();
