@@ -1,5 +1,7 @@
 #pragma once
 
+#include "utility.h"
+
 #include <cmath>
 #include <format>
 
@@ -35,9 +37,40 @@ public:
         return *this;
     }
     Vec3& operator/=(double t) { return *this *= (1 / t); }
+    friend Vec3 operator+(const Vec3& u, const Vec3& v);
+    friend Vec3 operator-(const Vec3& u, const Vec3& v);
+    friend Vec3 operator*(const Vec3& u, const Vec3& v);
+    friend Vec3 operator*(const Vec3& v, double t);
+    friend Vec3 operator*(double t, const Vec3& v);
+    friend Vec3 operator/(const Vec3& v, double t);
+
     double sqrnorm() const { return x() * x() + y() * y() + z() * z(); }
     double norm() const { return std::sqrt(sqrnorm()); }
     Vec3 normalized() const;
+    friend double dot(const Vec3& u, const Vec3& v);
+    friend Vec3 cross(const Vec3& u, const Vec3& v);
+
+    static Vec3 random() { return Vec3(random_double(), random_double(), random_double()); }
+    static Vec3 random(double min, double max) {
+        return Vec3(random_double(min, max), random_double(min, max), random_double(min, max));
+    }
+
+    static Vec3 random_unit() {
+        while (true) {
+            auto p = Vec3::random(-1, 1);
+            auto sqrnorm = p.sqrnorm();
+            if (1e-10 < sqrnorm && sqrnorm < 1) {
+                return p * (1.0 / std::sqrt(sqrnorm));
+            }
+        }
+    }
+    static Vec3 random_on_hemisphere(const Vec3& normal) {
+        Vec3 vec = random_unit();
+        if (dot(vec, normal) > 0.0)
+            return vec;
+        else
+            return -vec;
+    }
 };
 
 inline Vec3 operator+(const Vec3& u, const Vec3& v) {
@@ -105,6 +138,7 @@ public:
     double r() const { return x(); }
     double g() const { return y(); }
     double b() const { return z(); }
+    Color to_gamma() { return Color(std::sqrt(r()), std::sqrt(g()), std::sqrt(b())); }
     std::tuple<uint8_t, uint8_t, uint8_t> to_byte() const {
         auto red = std::clamp(r(), 0.0, 0.9999);
         auto green = std::clamp(g(), 0.0, 0.9999);

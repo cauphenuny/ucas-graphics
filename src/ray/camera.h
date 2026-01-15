@@ -14,6 +14,7 @@ public:
     double aspect_ratio = 1.0;
     int image_width = 100;
     int samples_per_pixel = 10;
+    int max_depth = 10;  // max depth of ray bounces
 
     auto render(const Hittable& world) -> RenderResult {
         initialize();
@@ -21,13 +22,10 @@ public:
 
         for (int j = 0; j < image_height; ++j) {
             for (int i = 0; i < image_width; ++i) {
-                auto pixel_loc = pixel00_loc + i * pixel_delta_u + j * pixel_delta_v;
-                Ray r(center, pixel_loc - center);
-                image[j * image_width + i] = ray_color(r, world);
                 Color pixel_color(0, 0, 0);
                 for (int sample = 0; sample < samples_per_pixel; sample++) {
                     Ray r = get_ray(i, j);
-                    pixel_color += ray_color(r, world);
+                    pixel_color += ray_color(r, world, max_depth);
                 }
                 image[j * image_width + i] = pixel_color * pixel_samples_scale;
             }
@@ -75,11 +73,13 @@ private:
         return Ray(center, pixel_sample - center);
     }
 
-    auto ray_color(const Ray& ray, const Hittable& world) -> Vec3 const {
+    auto ray_color(const Ray& ray, const Hittable& world, int depth) -> Vec3 const {
+        if (depth <= 0) return Color(0, 0, 0);
         auto center = Point3(0, 0, -1);
         HitResult result;
-        if (world.hit(ray, Interval(0, infinity), result)) {
-            return 0.5 * Color(result.normal + Vec3(1, 1, 1));
+        if (world.hit(ray, Interval(0.001, infinity), result)) {
+            Vec3 direction = result.normal + Vec3::random_unit();
+            return 0.5 * ray_color(Ray(result.p, direction), world, depth - 1);
         }
 
         Vec3 unit_direction = ray.direction().normalized();
