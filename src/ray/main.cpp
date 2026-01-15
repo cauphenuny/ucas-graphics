@@ -23,7 +23,7 @@ auto construct_world() {
                     auto albedo = Color::random() * Color::random();
                     sphere_material = std::make_shared<Lambertian>(albedo);
                     world.add(std::make_shared<Sphere>(center, 0.2, sphere_material));
-                } else if (choose_mat < 0.95) {
+                } else if (choose_mat < 0.9) {
                     auto albedo = Color::random(0.5, 1);
                     auto fuzz = random_double(0, 0.5);
                     sphere_material = std::make_shared<Metal>(albedo, fuzz);
@@ -51,8 +51,8 @@ auto construct_world() {
 auto construct_camera() {
     Camera cam;
     cam.aspect_ratio = 16. / 9.;
-    cam.image_width = 1600;
-    cam.samples_per_pixel = 1000;
+    cam.image_width = 800;
+    cam.samples_per_pixel = 400;
     cam.max_depth = 50;
 
     cam.vfov = 20;

@@ -6,6 +6,7 @@
 #include <format>
 #include <iostream>
 #include <vector>
+#include <atomic>
 
 struct RenderResult {
     int width, height;
@@ -31,18 +32,20 @@ public:
         initialize();
         auto image = std::vector<Color>(image_width * image_height);
 
+        std::atomic<int> counter = 0;
+#pragma omp parallel for
         for (int j = 0; j < image_height; ++j) {
             for (int i = 0; i < image_width; ++i) {
-                if (verbose) {
-                    std::cout << std::format(
-                        "Rendering pixel ({}, {}) / ({}, {})\n", i, j, image_width, image_height);
-                }
                 Color pixel_color(0, 0, 0);
                 for (int sample = 0; sample < samples_per_pixel; sample++) {
                     Ray r = get_ray(i, j);
                     pixel_color += ray_color(r, world, max_depth);
                 }
                 image[j * image_width + i] = pixel_color * pixel_samples_scale;
+            }
+            counter++;
+            if (verbose) {
+                std::cout << std::format("Rendered {}/{}\n", counter.load(), image_height);
             }
         }
         return RenderResult{.width = image_width, .height = image_height, .data = std::move(image)};

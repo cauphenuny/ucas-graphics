@@ -6,6 +6,7 @@ add_requires("glfw3", {system = true})
 add_requires("spdlog", {system = true})
 add_requires("magic_enum")
 add_requires("cmake::OpenCV")
+add_requires("openmp")
 
 target("project1")
     set_kind("binary")
@@ -40,6 +41,7 @@ target("project3")
     add_files("src/ray/main.cpp")
     add_includedirs("src/ray")
     add_packages("cmake::OpenCV")
+    add_packages("openmp")
     if is_plat("macosx") then
         add_frameworks("Cocoa", "CoreFoundation", "IOKit")
     end
