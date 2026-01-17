@@ -9,22 +9,33 @@
 #include <cassert>
 
 class BoundingBox {
+    void apply_pad() {
+        double delta = 0.0001;
+        if (x.size() < delta) x = x.expand(delta);
+        if (y.size() < delta) y = y.expand(delta);
+        if (z.size() < delta) z = z.expand(delta);
+    }
+
 public:
     Interval x, y, z;
     BoundingBox() = default;
 
-    BoundingBox(const Interval& x, const Interval& y, const Interval& z) : x(x), y(y), z(z) {}
-
-    BoundingBox(const Point3& a, const Point3& b) {
-        x = Interval(std::fmin(a.x(), b.x()), std::fmax(a.x(), b.x()));
-        y = Interval(std::fmin(a.y(), b.y()), std::fmax(a.y(), b.y()));
-        z = Interval(std::fmin(a.z(), b.z()), std::fmax(a.z(), b.z()));
+    BoundingBox(const Interval& x, const Interval& y, const Interval& z) : x(x), y(y), z(z) {
+        apply_pad();
     }
 
-    BoundingBox(const BoundingBox& box0, const BoundingBox& box1) {
-        x = Interval::combine(box0.x, box1.x);
-        y = Interval::combine(box0.y, box1.y);
-        z = Interval::combine(box0.z, box1.z);
+    static BoundingBox diag(const Point3& a, const Point3& b) {
+        auto x = Interval(std::fmin(a.x(), b.x()), std::fmax(a.x(), b.x()));
+        auto y = Interval(std::fmin(a.y(), b.y()), std::fmax(a.y(), b.y()));
+        auto z = Interval(std::fmin(a.z(), b.z()), std::fmax(a.z(), b.z()));
+        return BoundingBox(x, y, z);
+    }
+
+    static BoundingBox combine(const BoundingBox& box0, const BoundingBox& box1) {
+        auto x = Interval::combine(box0.x, box1.x);
+        auto y = Interval::combine(box0.y, box1.y);
+        auto z = Interval::combine(box0.z, box1.z);
+        return BoundingBox(x, y, z);
     }
 
     const Interval& axis_interval(int axis) const {

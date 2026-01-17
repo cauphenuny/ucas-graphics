@@ -23,9 +23,9 @@ public:
         std::shared_ptr<Material> mat)
         : center(center_start, center_end - center_start), radius(std::max(0., radius)), mat(mat) {
         auto rvec = Vec3(radius, radius, radius);
-        auto box0 = BoundingBox(center.at(0) - rvec, center.at(0) + rvec);
-        auto box1 = BoundingBox(center.at(1) - rvec, center.at(1) + rvec);
-        bbox = BoundingBox(box0, box1);
+        auto box0 = BoundingBox::diag(center.at(0) - rvec, center.at(0) + rvec);
+        auto box1 = BoundingBox::diag(center.at(1) - rvec, center.at(1) + rvec);
+        bbox = BoundingBox::combine(box0, box1);
     }
 
     BoundingBox bounding_box() const override { return bbox; }

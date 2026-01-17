@@ -12,10 +12,10 @@ class Material;
 struct HitResult {
     Point3 p;
     Vec3 normal;
-    double t; // ray t
+    double t;  // ray t
     bool front_face;
     std::shared_ptr<Material> mat;
-    double u, v; // texture coordinates
+    double u, v;  // texture coordinates
 
     /**
      * @brief set normal vector, considering the ray direction
@@ -50,7 +50,7 @@ public:
 
     void add(const std::shared_ptr<Hittable>& object) {
         objects.push_back(object);
-        bbox = BoundingBox(bbox, object->bounding_box());
+        bbox = BoundingBox::combine(bbox, object->bounding_box());
     }
 
     BoundingBox bounding_box() const override { return bbox; }

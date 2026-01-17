@@ -169,6 +169,14 @@ public:
         auto blue = std::clamp(b(), 0.0, 0.9999);
         return std::make_tuple(int(256 * red), int(256 * green), int(256 * blue));
     }
+
+    static Color red() { return Color(1.0, 0.2, 0.2); }
+    static Color green() { return Color(0.2, 1.0, 0.2); }
+    static Color blue() { return Color(0.2, 0.2, 1.0); }
+    static Color orange() { return Color(1.0, 0.5, 0.0); }
+    static Color white() { return Color(1.0, 1.0, 1.0); }
+    static Color teal() { return Color(0.2, 0.8, 0.8); }
+    static Color gray() { return Color(0.6, 0.6, 0.6); }
 };
 
 template <typename CharT> struct std::formatter<Color, CharT> {

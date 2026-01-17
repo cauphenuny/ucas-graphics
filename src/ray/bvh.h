@@ -17,7 +17,7 @@ public:
     BVHNode(std::vector<std::shared_ptr<Hittable>> objects, size_t start, size_t end) {
         bbox = BoundingBox::empty();
         for (size_t i = start; i < end; i++) {
-            bbox = BoundingBox(bbox, objects[i]->bounding_box());
+            bbox = BoundingBox::combine(bbox, objects[i]->bounding_box());
         }
         int axis = bbox.longest_axis();
 

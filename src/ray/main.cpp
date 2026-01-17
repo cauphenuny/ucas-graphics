@@ -1,5 +1,6 @@
 #include "main_earth.hpp"
 #include "main_perlin.hpp"
+#include "main_shapes.hpp"
 #include "main_spheres.hpp"
 
 #include <cstdlib>
@@ -14,6 +15,7 @@ int main(int argc, char** argv) {
         case 1: entrance = demo::spheres::main; break;
         case 2: entrance = demo::earth::main; break;
         case 3: entrance = demo::perlin::main; break;
+        case 4: entrance = demo::shapes::main; break;
         default: break;
     }
     if (!entrance) return -1;
