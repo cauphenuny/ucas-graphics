@@ -1,5 +1,6 @@
 #pragma once
 
+#include "aabb.h"
 #include "hittable.h"
 #include "material.h"
 #include "ray.h"
@@ -11,14 +12,23 @@ class Sphere : public Hittable {
     double radius;
     Ray center;
     std::shared_ptr<Material> mat;
+    BoundingBox bbox;
 
 public:
     Sphere(const Point3& center, double radius, std::shared_ptr<Material> mat)
-        : center(center, Vec3(0, 0, 0)), radius(std::max(0., radius)), mat(mat) {}
+        : Sphere(center, Vec3(0, 0, 0), radius, mat) {}
+
     Sphere(
         const Point3& center_start, const Point3& center_end, double radius,
         std::shared_ptr<Material> mat)
-        : center(center_start, center_end - center_start), radius(std::max(0., radius)), mat(mat) {}
+        : center(center_start, center_end - center_start), radius(std::max(0., radius)), mat(mat) {
+        auto rvec = Vec3(radius, radius, radius);
+        auto box0 = BoundingBox(center.at(0) - rvec, center.at(0) + rvec);
+        auto box1 = BoundingBox(center.at(1) - rvec, center.at(1) + rvec);
+        bbox = BoundingBox(box0, box1);
+    }
+
+    BoundingBox bounding_box() const override { return bbox; }
 
     bool hit(const Ray& ray, Interval interval, HitResult& result) const override {
         auto current_center = center.at(ray.time());

@@ -6,6 +6,13 @@ struct Interval {
     Interval() : min(+infinity), max(-infinity) {}
     Interval(double min, double max) : min(min), max(max) {}
 
+    static auto combine(const Interval& a, const Interval& b) {
+        return Interval(std::fmin(a.min, b.min), std::fmax(a.max, b.max));
+    }
+    static auto intersect(const Interval& a, const Interval& b) {
+        return Interval(std::fmax(a.min, b.min), std::fmin(a.max, b.max));
+    }
+
     double size() const { return max - min; }
 
     bool contains(double x) const { return min <= x && x <= max; }
@@ -18,7 +25,11 @@ struct Interval {
         return x;
     }
 
-    static const Interval empty() { return Interval(+infinity, -infinity); }
+    Interval expand(double delta) const {
+        auto padding = delta / 2.0;
+        return Interval(min - padding, max + padding);
+    }
 
+    static const Interval empty() { return Interval(+infinity, -infinity); }
     static const Interval universe() { return Interval(-infinity, +infinity); }
 };

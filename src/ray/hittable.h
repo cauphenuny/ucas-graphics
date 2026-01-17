@@ -1,5 +1,6 @@
 #pragma once
 
+#include "aabb.h"
 #include "interval.h"
 #include "ray.h"
 #include "vec.h"
@@ -31,10 +32,12 @@ class Hittable {
 public:
     virtual ~Hittable() = default;
     virtual bool hit(const Ray& ray, Interval interval, HitResult& result) const = 0;
+    virtual BoundingBox bounding_box() const = 0;
 };
 
 class Objects : public Hittable {
     std::vector<std::shared_ptr<Hittable>> objects;
+    BoundingBox bbox;
 
 public:
     Objects() = default;
@@ -42,7 +45,12 @@ public:
 
     void clear() { objects.clear(); }
 
-    void add(const std::shared_ptr<Hittable>& object) { objects.push_back(object); }
+    void add(const std::shared_ptr<Hittable>& object) {
+        objects.push_back(object);
+        bbox = BoundingBox(bbox, object->bounding_box());
+    }
+
+    BoundingBox bounding_box() const override { return bbox; }
 
     bool hit(const Ray& ray, Interval interval, HitResult& result) const override {
         HitResult temp_result;
