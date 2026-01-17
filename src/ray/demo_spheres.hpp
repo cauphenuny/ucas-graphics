@@ -51,8 +51,8 @@ inline auto construct_world() {
     auto material3 = std::make_shared<Metal>(Color(0.7, 0.6, 0.5), 0.0);
     world.add(std::make_shared<Sphere>(Point3(4, 1, 0), 1.0, material3));
 
-    // return BVHNode(world);
-    return world;
+    // return world;
+    return BVHNode(world);
 }
 
 inline auto construct_camera() {

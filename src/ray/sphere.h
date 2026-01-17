@@ -16,7 +16,7 @@ class Sphere : public Hittable {
 
 public:
     Sphere(const Point3& center, double radius, std::shared_ptr<Material> mat)
-        : Sphere(center, Vec3(0, 0, 0), radius, mat) {}
+        : Sphere(center, center, radius, mat) {}
 
     Sphere(
         const Point3& center_start, const Point3& center_end, double radius,
