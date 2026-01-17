@@ -58,4 +58,19 @@ public:
         }
         return true;
     }
+
+    int longest_axis() const {
+        if (x.size() > y.size()) {
+            return x.size() > z.size() ? 0 : 2;
+        } else {
+            return y.size() > z.size() ? 1 : 2;
+        }
+    }
+
+    static BoundingBox empty() {
+        return BoundingBox(Interval::empty(), Interval::empty(), Interval::empty());
+    }
+    static BoundingBox universe() {
+        return BoundingBox(Interval::universe(), Interval::universe(), Interval::universe());
+    }
 };

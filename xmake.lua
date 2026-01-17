@@ -40,11 +40,7 @@ target("project3")
     set_kind("binary")
     add_files("src/ray/main.cpp")
     add_includedirs("src/ray")
-    add_packages("cmake::OpenCV")
     add_packages("openmp")
-    if is_plat("macosx") then
-        add_frameworks("Cocoa", "CoreFoundation", "IOKit")
-    end
     set_rundir("$(projectdir)")
 
 --

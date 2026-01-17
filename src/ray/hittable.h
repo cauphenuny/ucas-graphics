@@ -43,6 +43,8 @@ public:
     Objects() = default;
     Objects(const std::shared_ptr<Hittable>& object) { add(object); }
 
+    const auto& items() const { return objects; }
+
     void clear() { objects.clear(); }
 
     void add(const std::shared_ptr<Hittable>& object) {
