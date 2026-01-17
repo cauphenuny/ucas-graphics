@@ -1,79 +1,18 @@
-#include "camera.h"
-#include "export.h"
-#include "hittable.h"
-#include "material.h"
-#include "sphere.h"
-#include "vec.h"
+#include "demo_spheres.hpp"
 
-#include <fstream>
-
-auto construct_world() {
-    Objects world;
-    auto ground_material = std::make_shared<Lambertian>(Color(0.5, 0.5, 0.5));
-    world.add(std::make_shared<Sphere>(Point3(0, -1000, 0), 1000, ground_material));
-
-    for (int a = -11; a < 11; a++) {
-        for (int b = -11; b < 11; b++) {
-            auto choose_mat = random_double();
-            Point3 center(a + 0.9 * random_double(), 0.2, b + 0.9 * random_double());
-
-            if ((center - Point3(4, 0.2, 0)).norm() > 0.9) {
-                std::shared_ptr<Material> sphere_material;
-                if (choose_mat < 0.6) {
-                    auto albedo = Color::random() * Color::random();
-                    sphere_material = std::make_shared<Lambertian>(albedo);
-                    world.add(std::make_shared<Sphere>(center, 0.2, sphere_material));
-                } else if (choose_mat < 0.9) {
-                    auto albedo = Color::random(0.5, 1);
-                    auto fuzz = random_double(0, 0.5);
-                    sphere_material = std::make_shared<Metal>(albedo, fuzz);
-                    world.add(std::make_shared<Sphere>(center, 0.2, sphere_material));
-                } else {
-                    sphere_material = std::make_shared<Dielectric>(1.5);
-                    world.add(std::make_shared<Sphere>(center, 0.2, sphere_material));
-                }
-            }
-        }
-    }
-
-    auto material1 = std::make_shared<Dielectric>(1.5);
-    world.add(std::make_shared<Sphere>(Point3(0, 1, 0), 1.0, material1));
-
-    auto material2 = std::make_shared<Lambertian>(Color(0.4, 0.2, 0.1));
-    world.add(std::make_shared<Sphere>(Point3(-4, 1, 0), 1.0, material2));
-
-    auto material3 = std::make_shared<Metal>(Color(0.7, 0.6, 0.5), 0.0);
-    world.add(std::make_shared<Sphere>(Point3(4, 1, 0), 1.0, material3));
-
-    return world;
-}
-
-auto construct_camera() {
-    Camera cam;
-    cam.aspect_ratio = 16. / 9.;
-    cam.image_width = 800;
-    cam.samples_per_pixel = 400;
-    cam.max_depth = 50;
-
-    cam.vfov = 20;
-    cam.lookfrom = Point3(13, 2, -3);
-    cam.lookat = Point3(0, 0, 0);
-    cam.vup = Vec3(0, 1, 0);
-
-    cam.defocus_angle = 0.6;
-    cam.focus_dist = 10.0;
-
-    return cam;
-}
+#include <cstdlib>
 
 int main(int argc, char** argv) {
-    if (argc < 2) return 1;
+    if (argc < 2) return -1;
+    int id = std::atoi(argv[1]);
+    argc--, argv++;
 
-    auto world = construct_world();
-    auto camera = construct_camera();
-    auto image = camera.render(world, true);
+    int (*handler)(int, char**) = nullptr;
+    switch (id) {
+        case 1: handler = demo::spheres::main; break;
+        default: break;
+    }
+    if (!handler) return -1;
 
-    auto file = std::ofstream(argv[1], std::ios::binary | std::ios::out);
-    dump(image, file);
-    return 0;
+    return handler(argc, argv);
 }
