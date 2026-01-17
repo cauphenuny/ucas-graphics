@@ -3,10 +3,10 @@
 #include "hittable.h"
 #include "material.h"
 
+#include <atomic>
 #include <format>
 #include <iostream>
 #include <vector>
-#include <atomic>
 
 struct RenderResult {
     int width, height;
@@ -105,7 +105,8 @@ private:
         auto pixel_sample =
             pixel00_loc + ((i + offset.x()) * pixel_delta_u) + ((j + offset.y()) * pixel_delta_v);
         auto ray_origin = (defocus_angle <= 0) ? center : sample_defocus_disk();
-        return Ray(ray_origin, pixel_sample - ray_origin);
+        auto ray_time = random_double();
+        return Ray(ray_origin, pixel_sample - ray_origin, ray_time);
     }
 
     auto ray_color(const Ray& ray, const Hittable& world, int depth) -> Vec3 const {

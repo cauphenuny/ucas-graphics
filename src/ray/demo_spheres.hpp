@@ -18,21 +18,24 @@ inline auto construct_world() {
         for (int b = -11; b < 11; b++) {
             auto choose_mat = random_double();
             Point3 center(a + 0.9 * random_double(), 0.2, b + 0.9 * random_double());
+            auto center2 = center + Vec3(0, random_double(0, 0.85) * random_double(0, 0.85), 0);
 
-            if ((center - Point3(4, 0.2, 0)).norm() > 0.9) {
+            if (((center - Point3(-4, 0.2, 0)).norm() > 0.9) &&
+                ((center - Point3(0, 0.2, 0)).norm() > 0.9) &&
+                ((center - Point3(4, 0.2, 0)).norm() > 0.9)) {
                 std::shared_ptr<Material> sphere_material;
                 if (choose_mat < 0.6) {
                     auto albedo = Color::random() * Color::random();
                     sphere_material = std::make_shared<Lambertian>(albedo);
-                    world.add(std::make_shared<Sphere>(center, 0.2, sphere_material));
+                    world.add(std::make_shared<Sphere>(center, center2, 0.2, sphere_material));
                 } else if (choose_mat < 0.9) {
                     auto albedo = Color::random(0.5, 1);
                     auto fuzz = random_double(0, 0.5);
                     sphere_material = std::make_shared<Metal>(albedo, fuzz);
-                    world.add(std::make_shared<Sphere>(center, 0.2, sphere_material));
+                    world.add(std::make_shared<Sphere>(center, center2, 0.2, sphere_material));
                 } else {
                     sphere_material = std::make_shared<Dielectric>(1.5);
-                    world.add(std::make_shared<Sphere>(center, 0.2, sphere_material));
+                    world.add(std::make_shared<Sphere>(center, center2, 0.2, sphere_material));
                 }
             }
         }
@@ -54,7 +57,7 @@ inline auto construct_camera() {
     Camera cam;
     cam.aspect_ratio = 16. / 9.;
     cam.image_width = 800;
-    cam.samples_per_pixel = 400;
+    cam.samples_per_pixel = 100;
     cam.max_depth = 50;
 
     cam.vfov = 20;
