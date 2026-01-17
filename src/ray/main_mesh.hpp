@@ -18,18 +18,18 @@ inline auto construct_camera() {
     cam.image_width = 1600;
     cam.samples_per_pixel = 100;
     cam.max_depth = 50;
-    cam.vfov = 20.0;
-    cam.lookfrom = Point3(-8, 20, 20);
-    cam.lookat = Point3(0, 5, 0);
+    cam.vfov = 30.0;
+    cam.lookfrom = Point3(-20, 10, -5);
+    cam.lookat = Point3(0, 1, 0);
     cam.vup = Vec3(0, 1, 0);
     cam.defocus_angle = 0.0;
     return cam;
 }
 
 inline int main(int argc, char** argv) {
-    if (argc < 3) return 1;
-    auto input_obj = argv[1];
-    auto output_img = argv[2];
+    if (argc < 2) return 1;
+    auto output_img = argv[1];
+    auto input_obj = argc > 2 ? argv[2] : "assets/mesh/spot.obj";
 
     auto camera = construct_camera();
 
@@ -41,24 +41,20 @@ inline int main(int argc, char** argv) {
         std::make_shared<ColorTexture>(Color::mix(Color::silver(), Color::white()));
 
     auto marble_material = std::make_shared<Lambertian>(marble_texture);
-    auto medal_material = std::make_shared<Metal>(Color::brown(), 0.05);
+    auto medal_material = std::make_shared<Metal>(Color::brown(), 0.2);
     auto diffuse_material = std::make_shared<Lambertian>(Color::brown());
-    auto silver_medal_mat = std::make_shared<Metal>(Color::gray(), 0.1);
+    auto silver_medal_mat = std::make_shared<Metal>(Color::gray(), 0.05);
     auto plain_material = std::make_shared<Lambertian>(plain_texture);
 
     world.add(std::make_shared<Sphere>(Point3(0, -1000, 0), 1000, silver_medal_mat));
 
     auto mesh = meshark::readGeometryMeshFromWavefrontObj(input_obj);
 
-    auto mesh_obj = std::make_shared<TriangleMesh>(mesh.get(), medal_material, Point3(0, 3, 0), 6);
+    auto mesh_obj =
+        std::make_shared<TriangleMesh>(mesh.get(), medal_material, Point3(0, 2.5, 0), 5);
     world.add(mesh_obj);
 
     auto box = mesh_obj->bounding_box();
-    auto center = Point3(
-        0.5 * (box.x.min + box.x.max), 0.5 * (box.y.min + box.y.max),
-        0.5 * (box.z.min + box.z.max));
-    std::cout << std::format("adjusted camera.lookat to {}\n", center);
-    camera.lookat = center;
 
     auto image = camera.render(world, true);
 
