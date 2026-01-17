@@ -6,7 +6,6 @@
 #define MESHSIMPLIFICATION_MESH_SIMPLIFICATION_INCLUDE_MESH_SIMPLIFICATION_OBSERVER_PTR_H_
 
 #include <cassert>
-#include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
 namespace mystl {

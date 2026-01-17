@@ -1,6 +1,8 @@
 #pragma once
 #include "utility.h"
 
+#include <format>
+
 struct Interval {
     double min, max;
     Interval() : min(+infinity), max(-infinity) {}
@@ -32,4 +34,27 @@ struct Interval {
 
     static const Interval empty() { return Interval(+infinity, -infinity); }
     static const Interval universe() { return Interval(-infinity, +infinity); }
+};
+
+template <typename CharT> struct std::formatter<Interval, CharT> {
+    std::formatter<double, CharT> component_formatter;
+
+    constexpr auto parse(std::basic_format_parse_context<CharT>& ctx) {
+        return component_formatter.parse(ctx);
+    }
+
+    template <typename FormatContext> auto format(const Interval& interval, FormatContext& ctx) const {
+        auto it = ctx.out();
+        it = std::format_to(it, "(");
+        ctx.advance_to(it);
+        it = component_formatter.format(interval.min, ctx);
+        ctx.advance_to(it);
+        it = std::format_to(it, ", ");
+        ctx.advance_to(it);
+        it = component_formatter.format(interval.max, ctx);
+        ctx.advance_to(it);
+        it = std::format_to(it, ")");
+        ctx.advance_to(it);
+        return it;
+    }
 };

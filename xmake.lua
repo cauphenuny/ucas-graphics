@@ -27,7 +27,7 @@ target("meshark")
     add_includedirs("src/mesh/meshark/include", {public = true})
     add_includedirs("src/mesh/external/glm", {public = true})
     add_headerfiles("src/mesh/meshark/include/(**.h)")
-    add_packages("spdlog")
+    add_packages("spdlog", {public = true})
 
 target("project2")
     set_kind("binary")
@@ -41,6 +41,7 @@ target("project3")
     add_files("src/ray/main.cpp")
     add_includedirs("src/ray")
     add_packages("openmp")
+    add_deps("meshark")
     set_rundir("$(projectdir)")
 
 --

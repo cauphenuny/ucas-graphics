@@ -7,6 +7,7 @@
 #include "vec.h"
 
 #include <cassert>
+#include <format>
 
 class BoundingBox {
     void apply_pad() {
@@ -83,5 +84,32 @@ public:
     }
     static BoundingBox universe() {
         return BoundingBox(Interval::universe(), Interval::universe(), Interval::universe());
+    }
+};
+
+template <typename CharT> struct std::formatter<BoundingBox, CharT> {
+    std::formatter<Interval, CharT> interval_formatter;
+
+    constexpr auto parse(std::basic_format_parse_context<CharT>& ctx) {
+        return interval_formatter.parse(ctx);
+    }
+
+    template <typename FormatContext> auto format(const BoundingBox& box, FormatContext& ctx) const {
+        auto it = ctx.out();
+        it = std::format_to(it, "(");
+        ctx.advance_to(it);
+        it = interval_formatter.format(box.x, ctx);
+        ctx.advance_to(it);
+        it = std::format_to(it, ", ");
+        ctx.advance_to(it);
+        it = interval_formatter.format(box.y, ctx);
+        ctx.advance_to(it);
+        it = std::format_to(it, ", ");
+        ctx.advance_to(it);
+        it = interval_formatter.format(box.z, ctx);
+        ctx.advance_to(it);
+        it = std::format_to(it, ")");
+        ctx.advance_to(it);
+        return it;
     }
 };

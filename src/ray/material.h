@@ -15,7 +15,7 @@ class Lambertian : public Material {
     std::shared_ptr<Texture> tex;
 
 public:
-    Lambertian(const Color& albedo) : tex(std::make_shared<SolidColor>(albedo)) {}
+    Lambertian(const Color& albedo) : tex(std::make_shared<ColorTexture>(albedo)) {}
     Lambertian(const std::shared_ptr<Texture>& texture) : tex(texture) {}
 
     bool scatter(

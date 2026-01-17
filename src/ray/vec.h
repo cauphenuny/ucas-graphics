@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <format>
+#include <glm/glm.hpp>
 
 class Vec3 {
     double d[3];
@@ -11,6 +12,7 @@ class Vec3 {
 public:
     Vec3() = default;
     Vec3(double x, double y, double z) { d[0] = x, d[1] = y, d[2] = z; }
+    Vec3(glm::vec3 v) { d[0] = v.x, d[1] = v.y, d[2] = v.z; }
     double x() const { return d[0]; }
     double y() const { return d[1]; }
     double z() const { return d[2]; }
@@ -177,6 +179,20 @@ public:
     static Color white() { return Color(1.0, 1.0, 1.0); }
     static Color teal() { return Color(0.2, 0.8, 0.8); }
     static Color gray() { return Color(0.6, 0.6, 0.6); }
+    static Color black() { return Color(0.0, 0.0, 0.0); }
+    static Color yellow() { return Color(1.0, 1.0, 0.2); }
+    static Color purple() { return Color(0.8, 0.2, 0.8); }
+    static Color pink() { return Color(1.0, 0.2, 0.6); }
+    static Color brown() { return Color(0.6, 0.4, 0.2); }
+    static Color cyan() { return Color(0.2, 1.0, 1.0); }
+    static Color lime() { return Color(0.2, 1.0, 0.2); }
+    static Color magenta() { return Color(1.0, 0.2, 1.0); }
+    static Color olive() { return Color(0.5, 0.5, 0.0); }
+    static Color navy() { return Color(0.0, 0.0, 0.5); }
+    static Color silver() { return Color(0.75, 0.75, 0.75); }
+    static Color mix(Color c0, Color c1, double c1_weight = 0.5) {
+        return (1.0 - c1_weight) * c0 + c1_weight * c1;
+    }
 };
 
 template <typename CharT> struct std::formatter<Color, CharT> {

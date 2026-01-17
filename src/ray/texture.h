@@ -12,12 +12,12 @@ public:
     virtual Color value(double u, double v, const Point3& p) const = 0;
 };
 
-class SolidColor : public Texture {
+class ColorTexture : public Texture {
     Color albedo;
 
 public:
-    SolidColor(const Color& albedo) : albedo(albedo) {}
-    SolidColor(double red, double green, double blue) : albedo(Color(red, green, blue)) {}
+    ColorTexture(const Color& albedo) : albedo(albedo) {}
+    ColorTexture(double red, double green, double blue) : albedo(Color(red, green, blue)) {}
 
     Color value(double u, double v, const Point3& p) const override { return albedo; }
 };
@@ -31,7 +31,7 @@ public:
     CheckerTexture(double scale, std::shared_ptr<Texture> even, std::shared_ptr<Texture> odd)
         : odd(odd), even(even), inv_scale(1.0 / scale) {}
     CheckerTexture(double scale, const Color& even, const Color& odd)
-        : odd(std::make_shared<SolidColor>(odd)), even(std::make_shared<SolidColor>(even)),
+        : odd(std::make_shared<ColorTexture>(odd)), even(std::make_shared<ColorTexture>(even)),
           inv_scale(1.0 / scale) {}
 
     Color value(double u, double v, const Point3& p) const override {
