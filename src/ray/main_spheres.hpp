@@ -12,7 +12,9 @@ namespace demo::spheres {
 
 inline auto construct_world() {
     Objects world;
-    auto ground_material = std::make_shared<Lambertian>(Color(0.5, 0.5, 0.5));
+    auto checker = std::make_shared<CheckerTexture>(
+        0.3, Color(0.2, 0.3, 0.1), Color(0.9, 0.9, 0.9));
+    auto ground_material = std::make_shared<Lambertian>(checker);
     world.add(std::make_shared<Sphere>(Point3(0, -1000, 0), 1000, ground_material));
 
     for (int a = -11; a < 11; a++) {
@@ -59,7 +61,7 @@ inline auto construct_camera() {
     Camera cam;
     cam.aspect_ratio = 16. / 9.;
     cam.image_width = 800;
-    cam.samples_per_pixel = 100;
+    cam.samples_per_pixel = 200;
     cam.max_depth = 50;
 
     cam.vfov = 20;

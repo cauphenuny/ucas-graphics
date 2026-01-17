@@ -12,9 +12,10 @@ class Material;
 struct HitResult {
     Point3 p;
     Vec3 normal;
-    double t;
+    double t; // ray t
     bool front_face;
     std::shared_ptr<Material> mat;
+    double u, v; // texture coordinates
 
     /**
      * @brief set normal vector, considering the ray direction

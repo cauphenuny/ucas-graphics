@@ -1,4 +1,4 @@
-#include "demo_spheres.hpp"
+#include "main_spheres.hpp"
 
 #include <cstdlib>
 

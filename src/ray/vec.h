@@ -156,7 +156,9 @@ template <typename CharT> struct std::formatter<Vec3, CharT> {
 
 class Color : public Vec3 {
 public:
-    template <typename... Args> Color(Args... args) : Vec3(args...) {}
+    Color() = default;
+    Color(double r, double g, double b) : Vec3(r, g, b) {}
+    Color(Vec3 v) : Vec3(v) {}
     double r() const { return x(); }
     double g() const { return y(); }
     double b() const { return z(); }
