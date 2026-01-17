@@ -1,4 +1,5 @@
 #include "main_earth.hpp"
+#include "main_perlin.hpp"
 #include "main_spheres.hpp"
 
 #include <cstdlib>
@@ -8,13 +9,14 @@ int main(int argc, char** argv) {
     int id = std::atoi(argv[1]);
     argc--, argv++;
 
-    int (*handler)(int, char**) = nullptr;
+    int (*entrance)(int, char**) = nullptr;
     switch (id) {
-        case 1: handler = demo::spheres::main; break;
-        case 2: handler = demo::earth::main; break;
+        case 1: entrance = demo::spheres::main; break;
+        case 2: entrance = demo::earth::main; break;
+        case 3: entrance = demo::perlin::main; break;
         default: break;
     }
-    if (!handler) return -1;
+    if (!entrance) return -1;
 
-    return handler(argc, argv);
+    return entrance(argc, argv);
 }

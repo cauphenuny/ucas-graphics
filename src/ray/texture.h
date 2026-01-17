@@ -1,6 +1,7 @@
 #pragma once
 
 #include "image.h"
+#include "perlin.h"
 #include "vec.h"
 
 #include <memory>
@@ -67,5 +68,29 @@ public:
         auto b = static_cast<double>(pixel[2]) / 255.0;
 
         return Color(r, g, b);
+    }
+};
+
+class NoiseTexture : public Texture {
+    Perlin perlin;
+    double scale;
+
+public:
+    NoiseTexture(double scale) : scale(scale) {}
+    Color value(double u, double v, const Point3& p) const override {
+        return Color(1, 1, 1) * 0.5 * (perlin.noise(p * scale) + 1);
+    }
+};
+
+class MarbleTexture : public Texture {
+    Perlin perlin;
+    double scale;
+    Vec3 dir;
+
+public:
+    MarbleTexture(double scale, Vec3 direction) : scale(scale), dir(direction) {}
+
+    Color value(double u, double v, const Point3& p) const override {
+        return Color(1, 1, 1) * 0.5 * (1 + std::sin(scale * dot(p, dir) + 10 * perlin.turb(p)));
     }
 };
