@@ -94,3 +94,14 @@ public:
         return Color(1, 1, 1) * 0.5 * (1 + std::sin(scale * dot(p, dir) + 10 * perlin.turb(p)));
     }
 };
+
+class TurbulenceTexture : public Texture {
+    Perlin perlin;
+    double scale;
+
+public:
+    TurbulenceTexture(double scale) : scale(scale) {}
+    Color value(double u, double v, const Point3& p) const override {
+        return Color(1, 1, 1) * perlin.turb(scale * p);
+    }
+};
