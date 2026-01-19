@@ -87,6 +87,12 @@ public:
     }
 };
 
+inline BoundingBox operator+(const BoundingBox& box, const Vec3& offset) {
+    return BoundingBox(box.x + offset.x(), box.y + offset.y(), box.z + offset.z());
+}
+inline BoundingBox operator+(const Vec3& offset, const BoundingBox& box) { return box + offset; }
+inline BoundingBox operator-(const BoundingBox& box, const Vec3& offset) { return box + (-offset); }
+
 template <typename CharT> struct std::formatter<BoundingBox, CharT> {
     std::formatter<Interval, CharT> interval_formatter;
 
@@ -94,7 +100,8 @@ template <typename CharT> struct std::formatter<BoundingBox, CharT> {
         return interval_formatter.parse(ctx);
     }
 
-    template <typename FormatContext> auto format(const BoundingBox& box, FormatContext& ctx) const {
+    template <typename FormatContext>
+    auto format(const BoundingBox& box, FormatContext& ctx) const {
         auto it = ctx.out();
         it = std::format_to(it, "(");
         ctx.advance_to(it);

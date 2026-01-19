@@ -2,8 +2,7 @@
 #include "export.h"
 #include "material.h"
 #include "shape.h"
-#include "sphere.h"
-#include "texture.h"
+#include "transform.h"
 
 #include <fstream>
 
@@ -13,7 +12,7 @@ inline auto construct_camera() {
     Camera cam;
     cam.aspect_ratio = 16.0 / 9.0;
     cam.image_width = 800;
-    cam.samples_per_pixel = 100;
+    cam.samples_per_pixel = 1000;
     cam.max_depth = 50;
     cam.vfov = 40.0;
     cam.lookfrom = Point3(278, 278, -800);
@@ -24,18 +23,7 @@ inline auto construct_camera() {
     return cam;
 }
 
-inline int main(int argc, char** argv) {
-    if (argc < 2) return 1;
-
-    auto camera = construct_camera();
-
-    Objects world;
-
-    auto red = std::make_shared<Lambertian>(Color(0.65, 0.05, 0.05));
-    auto white = std::make_shared<Lambertian>(Color(0.73, 0.73, 0.73));
-    auto green = std::make_shared<Lambertian>(Color(0.12, 0.45, 0.15));
-    auto light = std::make_shared<Light>(Color::white() * 15.0);
-
+inline auto construct_wall(Objects& world, auto&& green, auto&& red, auto&& white, auto&& light) {
     world.add(
         std::make_shared<Quadrilateral>(
             Point3(555, 0, 0), Vec3(0, 555, 0), Vec3(0, 0, 555), green));  // left
@@ -54,6 +42,35 @@ inline int main(int argc, char** argv) {
     world.add(
         std::make_shared<Quadrilateral>(
             Point3(555, 555, 555), Vec3(-555, 0, 0), Vec3(0, 0, -555), red));  // ceiling
+}
+
+inline int main(int argc, char** argv) {
+    if (argc < 2) return 1;
+
+    auto camera = construct_camera();
+
+    Objects world;
+
+    auto red = std::make_shared<Lambertian>(Color(0.65, 0.05, 0.05));
+    auto white = std::make_shared<Lambertian>(Color(0.73, 0.73, 0.73));
+    auto green = std::make_shared<Lambertian>(Color(0.12, 0.45, 0.15));
+    auto light = std::make_shared<Light>(Color::white() * 15.0);
+
+    construct_wall(world, green, red, white, light);
+
+    std::shared_ptr<Hittable> box1 =
+        std::make_shared<Box>(Point3(0, 0, 0), Point3(165, 330, 165), white);
+
+    box1 = box1 | RotateY(15) | Translate(Vec3(265, 0, 295));
+
+    std::shared_ptr<Hittable> box2 =
+        std::make_shared<Box>(Point3(0, 0, 0), Point3(165, 165, 165), white);
+
+    box2 = box2 | RotateY(-18) | Translate(Vec3(130, 0, 65));
+
+    world.add(box1);
+    world.add(box2);
+
     auto image = camera.render(world, true);
 
     auto file = std::ofstream(argv[1], std::ios::binary | std::ios::out);

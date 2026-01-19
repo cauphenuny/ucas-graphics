@@ -130,3 +130,37 @@ public:
         set_bounding_box();
     }
 };
+
+class Box : public Hittable {
+    Objects sides;
+
+public:
+    bool hit(const Ray& ray, Interval interval, HitResult& result) const {
+        return sides.hit(ray, interval, result);
+    }
+    BoundingBox bounding_box() const { return sides.bounding_box(); }
+
+    Box(const Point3& a, const Point3& b, std::shared_ptr<Material> mat) {
+        auto min =
+            Point3(std::fmin(a.x(), b.x()), std::fmin(a.y(), b.y()), std::fmin(a.z(), b.z()));
+        auto max =
+            Point3(std::fmax(a.x(), b.x()), std::fmax(a.y(), b.y()), std::fmax(a.z(), b.z()));
+
+        auto dx = Vec3(max.x() - min.x(), 0, 0);
+        auto dy = Vec3(0, max.y() - min.y(), 0);
+        auto dz = Vec3(0, 0, max.z() - min.z());
+
+        sides.add(
+            make_shared<Quadrilateral>(Point3(min.x(), min.y(), max.z()), dx, dy, mat));  // front
+        sides.add(
+            make_shared<Quadrilateral>(Point3(max.x(), min.y(), max.z()), -dz, dy, mat));  // right
+        sides.add(
+            make_shared<Quadrilateral>(Point3(max.x(), min.y(), min.z()), -dx, dy, mat));  // back
+        sides.add(
+            make_shared<Quadrilateral>(Point3(min.x(), min.y(), min.z()), dz, dy, mat));  // left
+        sides.add(
+            make_shared<Quadrilateral>(Point3(min.x(), max.y(), max.z()), dx, -dz, mat));  // top
+        sides.add(
+            make_shared<Quadrilateral>(Point3(min.x(), min.y(), min.z()), dx, dz, mat));  // bottom
+    }
+};

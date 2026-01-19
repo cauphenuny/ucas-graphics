@@ -36,6 +36,12 @@ struct Interval {
     static const Interval universe() { return Interval(-infinity, +infinity); }
 };
 
+inline Interval operator+(const Interval& a, double offset) {
+    return Interval(a.min + offset, a.max + offset);
+}
+inline Interval operator-(const Interval& a, double offset) { return a + (-offset); }
+inline Interval operator+(double offset, const Interval& a) { return a + offset; }
+
 template <typename CharT> struct std::formatter<Interval, CharT> {
     std::formatter<double, CharT> component_formatter;
 
@@ -43,7 +49,8 @@ template <typename CharT> struct std::formatter<Interval, CharT> {
         return component_formatter.parse(ctx);
     }
 
-    template <typename FormatContext> auto format(const Interval& interval, FormatContext& ctx) const {
+    template <typename FormatContext>
+    auto format(const Interval& interval, FormatContext& ctx) const {
         auto it = ctx.out();
         it = std::format_to(it, "(");
         ctx.advance_to(it);

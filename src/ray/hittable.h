@@ -36,6 +36,9 @@ public:
     virtual BoundingBox bounding_box() const = 0;
 };
 
+template <typename T>
+concept IsHittable = std::derived_from<T, Hittable>;
+
 class Objects : public Hittable {
     std::vector<std::shared_ptr<Hittable>> objects;
     BoundingBox bbox;
