@@ -14,11 +14,11 @@ struct RenderResult {
 };
 
 struct Camera {
-public:
     double aspect_ratio = 1.0;
     int image_width = 100;
     int samples_per_pixel = 10;
     int max_depth = 10;  // max depth of ray bounces
+    Color background = Color(0.7, 0.8, 1);
 
     double vfov = 90.0;  // vetical fov, unit: angle
     Point3 lookfrom = Point3(0, 0, 0);
@@ -113,17 +113,17 @@ private:
         if (depth <= 0) return Color(0, 0, 0);
         auto center = Point3(0, 0, -1);
         HitResult hit_result;
-        if (world.hit(ray, Interval(0.001, infinity), hit_result)) {
-            Ray scattered;
-            Color attenuation;
-            if (hit_result.mat->scatter(ray, hit_result, attenuation, scattered)) {
-                return attenuation * ray_color(scattered, world, depth - 1);
-            }
-            return Color(0, 0, 0);
+        if (!world.hit(ray, Interval(0.001, infinity), hit_result)) {
+            return background;
         }
+        Ray scattered;
+        Color attenuation;
+        Color color_emit = hit_result.mat->emit(hit_result.u, hit_result.v, hit_result.p);
 
-        Vec3 unit_direction = ray.direction().normalized();
-        auto a = 0.5 * (unit_direction.y() + 1.0);
-        return (1.0 - a) * Color(1., 1., 1.) + a * Color(0.5, 0.7, 1.0);
+        if (!hit_result.mat->scatter(ray, hit_result, attenuation, scattered)) {
+            return color_emit;
+        }
+        auto color_scatter = attenuation * ray_color(scattered, world, depth - 1);
+        return color_emit + color_scatter;
     }
 };

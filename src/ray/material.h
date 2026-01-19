@@ -8,7 +8,10 @@ class Material {
 public:
     virtual ~Material() = default;
     virtual bool
-    scatter(const Ray& r_in, const HitResult& hit, Color& attenuation, Ray& scattered) const = 0;
+    scatter(const Ray& r_in, const HitResult& hit, Color& attenuation, Ray& scattered) const {
+        return false;
+    }
+    virtual Color emit(double u, double v, const Point3& p) const { return Color(0, 0, 0); }
 };
 
 class Lambertian : public Material {
@@ -80,4 +83,14 @@ public:
         r0 = r0 * r0;
         return r0 + (1 - r0) * std::pow((1 - cosine), 5);
     }
+};
+
+class Light : public Material {
+    std::shared_ptr<Texture> tex;
+
+public:
+    Light(std::shared_ptr<Texture> tex) : tex(tex) {}
+    Light(const Color& color) : tex(std::make_shared<ColorTexture>(color)) {}
+
+    Color emit(double u, double v, const Point3& p) const override { return tex->value(u, v, p); }
 };
