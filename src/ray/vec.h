@@ -190,6 +190,7 @@ public:
     static Color olive() { return Color(0.5, 0.5, 0.0); }
     static Color navy() { return Color(0.0, 0.0, 0.5); }
     static Color silver() { return Color(0.75, 0.75, 0.75); }
+    static Color gold() { return Color(1.0, 0.84, 0.0); }
     static Color mix(Color c0, Color c1, double c1_weight = 0.5) {
         return (1.0 - c1_weight) * c0 + c1_weight * c1;
     }

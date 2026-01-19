@@ -11,6 +11,8 @@ class Translation : public Hittable, public traits::CreateShared<Translation> {
     BoundingBox bbox;
 
 public:
+    Translation(std::shared_ptr<Hittable> obj, double x, double y, double z)
+        : Translation(std::move(obj), Vec3(x, y, z)) {}
     Translation(std::shared_ptr<Hittable> obj, const Vec3& displacement)
         : object(std::move(obj)), offset(displacement) {
         bbox = object->bounding_box() + offset;
@@ -111,10 +113,12 @@ public:
     }
 };
 
-using Translate = TransformOperator<Translation, Vec3>;
+template <typename... Args> using Translate = TransformOperator<Translation, Args...>;
+
 template <int axis>
     requires(axis >= 0) && (axis < 3)
 using Rotate = TransformOperator<Rotation<axis>, double>;
+
 using RotateX = Rotate<0>;
 using RotateY = Rotate<1>;
 using RotateZ = Rotate<2>;

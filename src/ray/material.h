@@ -94,3 +94,18 @@ public:
 
     Color emit(double u, double v, const Point3& p) const override { return tex->value(u, v, p); }
 };
+
+class Isotropic : public Material, public traits::CreateShared<Isotropic> {
+    std::shared_ptr<Texture> tex;
+
+public:
+    Isotropic(std::shared_ptr<Texture> tex) : tex(tex) {}
+    Isotropic(const Color& color) : tex(std::make_shared<ColorTexture>(color)) {}
+
+    bool scatter(
+        const Ray& r_in, const HitResult& hit, Color& attenuation, Ray& scattered) const override {
+        scattered = Ray(hit.p, Vec3::random_unit(), r_in.time());
+        attenuation = tex->value(hit.u, hit.v, hit.p);
+        return true;
+    }
+};

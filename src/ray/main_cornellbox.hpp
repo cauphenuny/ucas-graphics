@@ -1,6 +1,7 @@
 #include "camera.h"
 #include "export.h"
 #include "material.h"
+#include "medium.h"
 #include "shape.h"
 #include "transform.h"
 
@@ -46,6 +47,10 @@ inline auto construct_wall(Objects& world, auto&& green, auto&& red, auto&& whit
 
 inline int main(int argc, char** argv) {
     if (argc < 2) return 1;
+    bool smoke = false;
+    if (argc > 2) {
+        smoke = std::atoi(argv[2]) != 0;
+    }
 
     auto camera = construct_camera();
 
@@ -66,8 +71,13 @@ inline int main(int argc, char** argv) {
 
     box2 = box2 | RotateY(-18) | Translate(Vec3(130, 0, 65));
 
-    world.add(box1);
-    world.add(box2);
+    if (smoke) {
+        world.add(ConstantMedium::create(box1, 0.01, Color::black()));
+        world.add(ConstantMedium::create(box2, 0.01, Color::white()));
+    } else {
+        world.add(box1);
+        world.add(box2);
+    }
 
     auto image = camera.render(world, true);
 
