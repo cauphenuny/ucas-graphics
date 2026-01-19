@@ -14,7 +14,7 @@ public:
     virtual Color emit(double u, double v, const Point3& p) const { return Color(0, 0, 0); }
 };
 
-class Lambertian : public Material {
+class Lambertian : public Material, public traits::CreateShared<Lambertian> {
     std::shared_ptr<Texture> tex;
 
 public:
@@ -33,7 +33,7 @@ public:
     }
 };
 
-class Metal : public Material {
+class Metal : public Material, public traits::CreateShared<Metal> {
     Color albedo;
     double fuzz;
 
@@ -49,7 +49,7 @@ public:
     }
 };
 
-class Dielectric : public Material {
+class Dielectric : public Material, public traits::CreateShared<Dielectric> {
     double refraction_index;
 
 public:
@@ -85,7 +85,7 @@ public:
     }
 };
 
-class Light : public Material {
+class Light : public Material, public traits::CreateShared<Light> {
     std::shared_ptr<Texture> tex;
 
 public:

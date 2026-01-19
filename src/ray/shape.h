@@ -50,7 +50,7 @@ public:
     }
 };
 
-class Triangle : public Shape2D {
+class Triangle : public Shape2D, public traits::CreateShared<Triangle> {
 protected:
     void set_bounding_box() override {
         bbox = BoundingBox::diag(origin, origin + vec_u);
@@ -77,7 +77,7 @@ public:
     }
 };
 
-class Quadrilateral : public Shape2D {
+class Quadrilateral : public Shape2D, public traits::CreateShared<Quadrilateral> {
 protected:
     void set_bounding_box() override {
         auto bbox_diag1 = BoundingBox::diag(origin, origin + vec_u);
@@ -103,7 +103,7 @@ public:
     }
 };
 
-class Ellipse : public Shape2D {
+class Ellipse : public Shape2D, public traits::CreateShared<Ellipse> {
 protected:
     double a_squared, b_squared;
 
@@ -131,7 +131,7 @@ public:
     }
 };
 
-class Box : public Hittable {
+class Box : public Hittable, public traits::CreateShared<Box> {
     Objects sides;
 
 public:

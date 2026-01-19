@@ -51,20 +51,18 @@ inline int main(int argc, char** argv) {
 
     Objects world;
 
-    auto red = std::make_shared<Lambertian>(Color(0.65, 0.05, 0.05));
-    auto white = std::make_shared<Lambertian>(Color(0.73, 0.73, 0.73));
-    auto green = std::make_shared<Lambertian>(Color(0.12, 0.45, 0.15));
-    auto light = std::make_shared<Light>(Color::white() * 15.0);
+    auto red = Lambertian::create(Color(0.65, 0.05, 0.05));
+    auto white = Lambertian::create(Color(0.73, 0.73, 0.73));
+    auto green = Lambertian::create(Color(0.12, 0.45, 0.15));
+    auto light = Light::create(Color::white() * 15.0);
 
     construct_wall(world, green, red, white, light);
 
-    std::shared_ptr<Hittable> box1 =
-        std::make_shared<Box>(Point3(0, 0, 0), Point3(165, 330, 165), white);
+    std::shared_ptr<Hittable> box1 = Box::create(Point3(0, 0, 0), Point3(165, 330, 165), white);
 
     box1 = box1 | RotateY(15) | Translate(Vec3(265, 0, 295));
 
-    std::shared_ptr<Hittable> box2 =
-        std::make_shared<Box>(Point3(0, 0, 0), Point3(165, 165, 165), white);
+    std::shared_ptr<Hittable> box2 = Box::create(Point3(0, 0, 0), Point3(165, 165, 165), white);
 
     box2 = box2 | RotateY(-18) | Translate(Vec3(130, 0, 65));
 

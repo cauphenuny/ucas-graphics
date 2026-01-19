@@ -29,26 +29,26 @@ inline int main(int argc, char** argv) {
 
     Objects world;
 
-    auto red = std::make_shared<Lambertian>(Color::red());
-    auto green = std::make_shared<Lambertian>(Color::green());
-    auto blue = std::make_shared<Lambertian>(Color::blue());
-    auto orange = std::make_shared<Lambertian>(Color::orange());
-    auto teal = std::make_shared<Lambertian>(Color::teal());
-    auto gray = std::make_shared<Lambertian>(Color::gray());
+    auto red = Lambertian::create(Color::red());
+    auto green = Lambertian::create(Color::green());
+    auto blue = Lambertian::create(Color::blue());
+    auto orange = Lambertian::create(Color::orange());
+    auto teal = Lambertian::create(Color::teal());
+    auto gray = Lambertian::create(Color::gray());
 
     auto axis_x = Vec3(4, 0, 0);
     auto axis_y = Vec3(0, 4, 0);
     auto axis_z = Vec3(0, 0, 4);
 
-    world.add(std::make_shared<Quadrilateral>(Point3(-3, -2, 5), -axis_z, axis_y, red));
-    world.add(std::make_shared<Quadrilateral>(Point3(-2, -2, 0), axis_x, axis_y, green));
+    world.add(Quadrilateral::create(Point3(-3, -2, 5), -axis_z, axis_y, red));
+    world.add(Quadrilateral::create(Point3(-2, -2, 0), axis_x, axis_y, green));
     for (int i = -9; i <= 9; i++) {
-        world.add(std::make_shared<Ellipse>(Point3(0, 0.2 * i, 3), axis_x / 4, axis_z / 4, gray));
+        world.add(Ellipse::create(Point3(0, 0.2 * i, 3), axis_x / 4, axis_z / 4, gray));
     }
-    world.add(std::make_shared<Quadrilateral>(Point3(3, -2, 1), axis_z, axis_y, blue));
-    world.add(std::make_shared<Quadrilateral>(Point3(-2, 3, 1), axis_x, axis_z, orange));
-    world.add(std::make_shared<Quadrilateral>(Point3(-2, -3, 5), axis_x, -axis_z, teal));
-    world.add(std::make_shared<Triangle>(Point3(-2, -2, 5), axis_x * 0.8, -axis_z * 0.8, orange));
+    world.add(Quadrilateral::create(Point3(3, -2, 1), axis_z, axis_y, blue));
+    world.add(Quadrilateral::create(Point3(-2, 3, 1), axis_x, axis_z, orange));
+    world.add(Quadrilateral::create(Point3(-2, -3, 5), axis_x, -axis_z, teal));
+    world.add(Triangle::create(Point3(-2, -2, 5), axis_x * 0.8, -axis_z * 0.8, orange));
 
     auto image = camera.render(world, true);
 

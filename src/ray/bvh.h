@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <memory>
 
-class BVHNode : public Hittable {
+class BVHNode : public Hittable, public traits::CreateShared<BVHNode> {
     std::shared_ptr<Hittable> left, right;
     BoundingBox bbox;
 
@@ -30,8 +30,8 @@ public:
         } else {
             std::sort(objects.begin() + start, objects.begin() + end, comparator[axis]);
             auto mid = start + object_span / 2;
-            left = std::make_shared<BVHNode>(objects, start, mid);
-            right = std::make_shared<BVHNode>(objects, mid, end);
+            left = BVHNode::create(objects, start, mid);
+            right = BVHNode::create(objects, mid, end);
         }
     }
 

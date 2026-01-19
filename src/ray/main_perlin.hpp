@@ -29,13 +29,11 @@ inline int main(int argc, char** argv) {
 
     Objects world;
 
-    auto marble_texture = std::make_shared<MarbleTexture>(3., Vec3(-0.6, 0, 1));
-    auto turb_texture = std::make_shared<TurbulenceTexture>(2.);
+    auto marble_texture = MarbleTexture::create(3., Vec3(-0.6, 0, 1));
+    auto turb_texture = TurbulenceTexture::create(2.);
     world.add(
-        std::make_shared<Sphere>(
-            Point3(0, -1000, 0), 1000, std::make_shared<Lambertian>(marble_texture)));
-    world.add(
-        std::make_shared<Sphere>(Point3(0, 2, 0), 2.0, std::make_shared<Lambertian>(turb_texture)));
+        Sphere::create(Point3(0, -1000, 0), 1000, Lambertian::create(marble_texture)));
+    world.add(Sphere::create(Point3(0, 2, 0), 2.0, Lambertian::create(turb_texture)));
 
     auto image = camera.render(world, true);
 

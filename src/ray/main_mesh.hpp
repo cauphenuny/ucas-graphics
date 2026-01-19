@@ -35,23 +35,22 @@ inline int main(int argc, char** argv) {
 
     Objects world;
 
-    auto marble_texture = std::make_shared<MarbleTexture>(3., Vec3(0, 0, 1));
-    auto turb_texture = std::make_shared<TurbulenceTexture>(2.);
+    auto marble_texture = MarbleTexture::create(3., Vec3(0, 0, 1));
+    auto turb_texture = TurbulenceTexture::create(2.);
     auto plain_texture =
-        std::make_shared<ColorTexture>(Color::mix(Color::silver(), Color::white()));
+        ColorTexture::create(Color::mix(Color::silver(), Color::white()));
 
-    auto marble_material = std::make_shared<Lambertian>(marble_texture);
-    auto medal_material = std::make_shared<Metal>(Color::brown(), 0.2);
-    auto diffuse_material = std::make_shared<Lambertian>(Color::brown());
-    auto silver_medal_mat = std::make_shared<Metal>(Color::gray(), 0.05);
-    auto plain_material = std::make_shared<Lambertian>(plain_texture);
+    auto marble_material = Lambertian::create(marble_texture);
+    auto medal_material = Metal::create(Color::brown(), 0.2);
+    auto diffuse_material = Lambertian::create(Color::brown());
+    auto silver_medal_mat = Metal::create(Color::gray(), 0.05);
+    auto plain_material = Lambertian::create(plain_texture);
 
-    world.add(std::make_shared<Sphere>(Point3(0, -1000, 0), 1000, silver_medal_mat));
+    world.add(Sphere::create(Point3(0, -1000, 0), 1000, silver_medal_mat));
 
     auto mesh = meshark::readGeometryMeshFromWavefrontObj(input_obj);
 
-    auto mesh_obj =
-        std::make_shared<TriangleMesh>(mesh.get(), medal_material, Point3(0, 2.5, 0), 5);
+    auto mesh_obj = TriangleMesh::create(mesh.get(), medal_material, Point3(0, 2.5, 0), 5);
     world.add(mesh_obj);
 
     auto box = mesh_obj->bounding_box();

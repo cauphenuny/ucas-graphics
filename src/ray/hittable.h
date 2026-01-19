@@ -3,6 +3,7 @@
 #include "aabb.h"
 #include "interval.h"
 #include "ray.h"
+#include "utility.h"
 #include "vec.h"
 
 #include <memory>
@@ -39,7 +40,7 @@ public:
 template <typename T>
 concept IsHittable = std::derived_from<T, Hittable>;
 
-class Objects : public Hittable {
+class Objects : public Hittable, public traits::CreateShared<Objects> {
     std::vector<std::shared_ptr<Hittable>> objects;
     BoundingBox bbox;
 

@@ -27,8 +27,8 @@ inline int main(int argc, char** argv) {
 
     auto camera = construct_camera();
 
-    auto earth_texture = std::make_shared<ImageTexture>("earth.jpg");
-    auto earth_surface = std::make_shared<Lambertian>(earth_texture);
+    auto earth_texture = ImageTexture::create("earth.jpg");
+    auto earth_surface = Lambertian::create(earth_texture);
     auto earth = Sphere(Point3(0, 0, 0), 2.0, earth_surface);
 
     auto image = camera.render(earth, true);

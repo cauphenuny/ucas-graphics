@@ -12,10 +12,10 @@ namespace demo::spheres {
 
 inline auto construct_world() {
     Objects world;
-    auto checker = std::make_shared<CheckerTexture>(
-        0.3, Color(0.2, 0.3, 0.1), Color(0.9, 0.9, 0.9));
-    auto ground_material = std::make_shared<Lambertian>(checker);
-    world.add(std::make_shared<Sphere>(Point3(0, -1000, 0), 1000, ground_material));
+    auto checker =
+        CheckerTexture::create(0.3, Color(0.2, 0.3, 0.1), Color(0.9, 0.9, 0.9));
+    auto ground_material = Lambertian::create(checker);
+    world.add(Sphere::create(Point3(0, -1000, 0), 1000, ground_material));
 
     for (int a = -11; a < 11; a++) {
         for (int b = -11; b < 11; b++) {
@@ -29,29 +29,29 @@ inline auto construct_world() {
                 std::shared_ptr<Material> sphere_material;
                 if (choose_mat < 0.6) {
                     auto albedo = Color::random() * Color::random();
-                    sphere_material = std::make_shared<Lambertian>(albedo);
-                    world.add(std::make_shared<Sphere>(center, center2, 0.2, sphere_material));
+                    sphere_material = Lambertian::create(albedo);
+                    world.add(Sphere::create(center, center2, 0.2, sphere_material));
                 } else if (choose_mat < 0.9) {
                     auto albedo = Color::random(0.5, 1);
                     auto fuzz = random_double(0, 0.5);
-                    sphere_material = std::make_shared<Metal>(albedo, fuzz);
-                    world.add(std::make_shared<Sphere>(center, center2, 0.2, sphere_material));
+                    sphere_material = Metal::create(albedo, fuzz);
+                    world.add(Sphere::create(center, center2, 0.2, sphere_material));
                 } else {
-                    sphere_material = std::make_shared<Dielectric>(1.5);
-                    world.add(std::make_shared<Sphere>(center, center2, 0.2, sphere_material));
+                    sphere_material = Dielectric::create(1.5);
+                    world.add(Sphere::create(center, center2, 0.2, sphere_material));
                 }
             }
         }
     }
 
-    auto material1 = std::make_shared<Dielectric>(1.5);
-    world.add(std::make_shared<Sphere>(Point3(0, 1, 0), 1.0, material1));
+    auto material1 = Dielectric::create(1.5);
+    world.add(Sphere::create(Point3(0, 1, 0), 1.0, material1));
 
-    auto material2 = std::make_shared<Lambertian>(Color(0.4, 0.2, 0.1));
-    world.add(std::make_shared<Sphere>(Point3(-4, 1, 0), 1.0, material2));
+    auto material2 = Lambertian::create(Color(0.4, 0.2, 0.1));
+    world.add(Sphere::create(Point3(-4, 1, 0), 1.0, material2));
 
-    auto material3 = std::make_shared<Metal>(Color(0.7, 0.6, 0.5), 0.0);
-    world.add(std::make_shared<Sphere>(Point3(4, 1, 0), 1.0, material3));
+    auto material3 = Metal::create(Color(0.7, 0.6, 0.5), 0.0);
+    world.add(Sphere::create(Point3(4, 1, 0), 1.0, material3));
 
     // return world;
     return BVHNode(world);

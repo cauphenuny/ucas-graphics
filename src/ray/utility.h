@@ -40,3 +40,13 @@ inline double trilinear_interplation(double c[2][2][2], double u, double v, doub
     }
     return accum;
 }
+
+namespace traits {
+
+template <typename T> struct CreateShared {
+    template <typename... Args> static std::shared_ptr<T> create(Args... args) {
+        return std::make_shared<T>(args...);
+    }
+};
+
+}  // namespace traits

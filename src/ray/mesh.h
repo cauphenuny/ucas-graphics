@@ -11,7 +11,7 @@
 #include <meshark/geometry-mesh.h>
 #include <meshark/mesh-io.h>
 
-class TriangleMesh : public Hittable {
+class TriangleMesh : public Hittable, public traits::CreateShared<TriangleMesh> {
     std::shared_ptr<Hittable> container;
 
     void build(

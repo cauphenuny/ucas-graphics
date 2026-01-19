@@ -5,7 +5,7 @@
 #include <tuple>
 #include <utility>
 
-class Translation : public Hittable {
+class Translation : public Hittable, public traits::CreateShared<Translation> {
     std::shared_ptr<Hittable> object;
     Vec3 offset;
     BoundingBox bbox;
@@ -42,7 +42,7 @@ Vec3 rotate(const Vec3 raw, double cos, double sin) {
 
 template <int axis>
     requires(axis >= 0) && (axis < 3)
-class Rotation : public Hittable {
+class Rotation : public Hittable, public traits::CreateShared<Rotation<axis>> {
     std::shared_ptr<Hittable> object;
     double sin_theta, cos_theta;
     BoundingBox bbox;

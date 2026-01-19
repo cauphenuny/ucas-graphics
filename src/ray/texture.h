@@ -12,7 +12,7 @@ public:
     virtual Color value(double u, double v, const Point3& p) const = 0;
 };
 
-class ColorTexture : public Texture {
+class ColorTexture : public Texture, public traits::CreateShared<ColorTexture> {
     Color albedo;
 
 public:
@@ -22,7 +22,7 @@ public:
     Color value(double u, double v, const Point3& p) const override { return albedo; }
 };
 
-class CheckerTexture : public Texture {
+class CheckerTexture : public Texture, public traits::CreateShared<CheckerTexture> {
     std::shared_ptr<Texture> odd;
     std::shared_ptr<Texture> even;
     double inv_scale;
@@ -45,7 +45,7 @@ public:
     }
 };
 
-class ImageTexture : public Texture {
+class ImageTexture : public Texture, public traits::CreateShared<ImageTexture> {
     Image image;
 
 public:
@@ -71,7 +71,7 @@ public:
     }
 };
 
-class NoiseTexture : public Texture {
+class NoiseTexture : public Texture, public traits::CreateShared<NoiseTexture> {
     Perlin perlin;
     double scale;
 
@@ -82,7 +82,7 @@ public:
     }
 };
 
-class MarbleTexture : public Texture {
+class MarbleTexture : public Texture, public traits::CreateShared<MarbleTexture> {
     Perlin perlin;
     double scale;
     Vec3 dir;
@@ -95,7 +95,7 @@ public:
     }
 };
 
-class TurbulenceTexture : public Texture {
+class TurbulenceTexture : public Texture, public traits::CreateShared<TurbulenceTexture> {
     Perlin perlin;
     double scale;
 

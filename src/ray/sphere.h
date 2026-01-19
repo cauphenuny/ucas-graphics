@@ -8,7 +8,7 @@
 
 #include <memory>
 
-class Sphere : public Hittable {
+class Sphere : public Hittable, public traits::CreateShared<Sphere> {
     double radius;
     Ray center;
     std::shared_ptr<Material> mat;
