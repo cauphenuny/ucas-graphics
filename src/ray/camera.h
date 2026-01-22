@@ -37,15 +37,18 @@ struct Camera {
         for (int j = 0; j < image_height; ++j) {
             for (int i = 0; i < image_width; ++i) {
                 Color pixel_color(0, 0, 0);
-                for (int sample = 0; sample < samples_per_pixel; sample++) {
-                    Ray r = get_ray(i, j);
-                    pixel_color += ray_color(r, world, max_depth);
+                for (int sj = 0; sj < sqrt_spp; sj++) {
+                    for (int si = 0; si < sqrt_spp; si++) {
+                        Ray r = get_ray(i, j, si, sj);
+                        pixel_color += ray_color(r, world, max_depth);
+                    }
                 }
                 image[j * image_width + i] = pixel_color * pixel_samples_scale;
             }
             counter++;
             if (verbose) {
-                std::cout << std::format("Rendered {}/{}\n", counter.load(), image_height);
+                std::clog << std::format("Rendered {}/{}\n", counter.load(), image_height)
+                          << std::flush;
             }
         }
         return RenderResult{.width = image_width, .height = image_height, .data = std::move(image)};
@@ -54,6 +57,8 @@ struct Camera {
 private:
     int image_height;
     double pixel_samples_scale;
+    int sqrt_spp;
+    double recip_sqrt_spp;
     Point3 center;       // camera center
     Point3 pixel00_loc;  // Location of pixel (0,0)
     Vec3 pixel_delta_u;  // offset of one pixel in u-direction
@@ -67,7 +72,9 @@ private:
         auto ratio = (double)image_width / (double)image_height;
         center = lookfrom;
 
-        pixel_samples_scale = 1.0 / samples_per_pixel;
+        sqrt_spp = int(std::sqrt(samples_per_pixel));
+        pixel_samples_scale = 1.0 / (sqrt_spp * sqrt_spp);
+        recip_sqrt_spp = 1.0 / sqrt_spp;
 
         // viewport dimensions
         auto theta = degrees_to_radians(vfov);
@@ -95,13 +102,19 @@ private:
 
     auto sample_square() const { return Vec3{random_double() - 0.5, random_double() - 0.5, 0.0}; }
 
+    auto sample_square_stratified(int si, int sj) const {
+        auto px = ((si + random_double()) * recip_sqrt_spp) - 0.5;
+        auto py = ((sj + random_double()) * recip_sqrt_spp) - 0.5;
+        return Vec3{px, py, 0.0};
+    }
+
     auto sample_defocus_disk() const {
         auto p = Vec3::random_in_unit_disk();
         return center + (p.x() * defocus_disk_u) + (p.y() * defocus_disk_v);
     }
 
-    auto get_ray(int i, int j) const -> Ray {
-        auto offset = sample_square();
+    auto get_ray(int i, int j, int si, int sj) const -> Ray {
+        auto offset = sample_square_stratified(si, sj);
         auto pixel_sample =
             pixel00_loc + ((i + offset.x()) * pixel_delta_u) + ((j + offset.y()) * pixel_delta_v);
         auto ray_origin = (defocus_angle <= 0) ? center : sample_defocus_disk();

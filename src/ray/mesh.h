@@ -26,9 +26,10 @@ class TriangleMesh : public Hittable, public traits::CreateShared<TriangleMesh> 
             triangles.add(std::make_shared<Triangle>(v0, v1 - v0, v2 - v0, mat));
         }
         container = std::make_shared<BVHNode>(triangles);
-        std::cout << std::format(
-            "Loaded mesh with {} triangles, bounding box: {}\n", mesh->numFaces(),
-            container->bounding_box());
+        std::clog << std::format(
+                         "Loaded mesh with {} triangles, bounding box: {}", mesh->numFaces(),
+                         container->bounding_box())
+                  << std::flush;
     }
 
 public:
