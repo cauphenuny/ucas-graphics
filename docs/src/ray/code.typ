@@ -1373,15 +1373,14 @@ $ L_o approx L_e + (f_r dot p_"scatter" dot L_i) / p_"sample" $
 
 *光谱渲染的优势：*
 1. *物理准确性*：直接模拟光的波长特性
-2. *色散模拟*：棱镜、彩虹等色散现象
-3. *真实材质*：金属、宝石等材质的光谱反射特性
-4. *荧光效应*：波长转换现象（如荧光材料）
-5. *色彩管理*：更准确的色彩空间转换
+2. *色散模拟*：棱镜、彩虹等色散现象（通过波长相关折射率）
+3. *波长采样*：材质属性可以在特定波长处采样
+4. *色彩管理*：更准确的色彩空间转换（通过 CIE XYZ）
 
 *核心实现 commit 参考：*
 - `ca89419`：光谱数据结构与 CIE 色彩匹配函数
 - `47d5f67`：RGB 到光谱转换（Smits 1999 方法）
-- `336d96f`：材质系统重构，支持光谱 BRDF
+- `336d96f`：材质系统重构，支持波长相关的材质属性
 
 === 重构概览：从 RGB 到 Spectrum
 
@@ -1618,7 +1617,7 @@ inline double averageSpectrumSamples(
 class Spectrum {
     // 算术运算（逐波长）
     Spectrum operator+(const Spectrum& s) const;  // 光谱叠加
-    Spectrum operator*(const Spectrum& s) const;  // 逐波长相乘（BRDF 调制）
+    Spectrum operator*(const Spectrum& s) const;  // 逐波长相乘（光谱调制）
     Spectrum operator*(double a) const;           // 标量缩放
     
     // 工具函数
@@ -1636,58 +1635,75 @@ class Spectrum {
 ```
 
 *物理意义：*
-- `a * b`：反射率调制（材质 BRDF × 入射光）
+- `a * b`：反射率调制（材质反射率 × 入射光）
 - `a + b`：光谱能量叠加（多光源）
 - `sqrt(s)`：用于重要性采样的方差计算
 
 === 材质系统重构
 
-==== 光谱 BRDF
+==== 波长相关的材质属性
 
-```cpp
-class Material {
-protected:
-    Spectrum albedo;  // 光谱反射率
+实际实现中，光谱渲染主要用于两个方面：
 
-public:
-    // 构造函数支持 RGB 输入（自动转换）
-    Material(const Color& color) 
-        : albedo(Spectrum::fromRGB(color, SpectrumType::Reflectance)) {}
-    
-    virtual bool scatter(const Ray& r_in, const HitResult& hit, 
-                        ScatterResult& result) const {
-        // result.attenuation 现在是 Spectrum 类型
-        result.attenuation = albedo;  // 光谱衰减
-        // ...
-    }
-};
-```
-
-==== 示例：金属材质
+1. **金属材质的波长采样**：存储完整光谱，在特定波长处采样
+2. **电介质的色散模拟**：折射率随波长变化（Cauchy 方程）
 
 ```cpp
 class Metal : public Material {
-    Spectrum albedo;  // 光谱反射率（金属的波长相关反射）
+    Spectrum albedo;  // 光谱反射率
     double fuzz;
     
 public:
-    Metal(const Color& color, double fuzz = 0) 
-        : albedo(Spectrum::fromRGB(color, SpectrumType::Reflectance)), fuzz(fuzz) {}
+    Metal(const Color& color, double fuzz = 0) : albedo(color), fuzz(fuzz) {}
     
     bool scatter(const Ray& r_in, const HitResult& hit, 
                  ScatterResult& result) const override {
-        Vec3 reflected = reflect(r_in.direction(), hit.normal);
-        // 光谱调制
-        result.attenuation = albedo;
-        result.scattered = Ray(hit.p, reflected + fuzz * random_in_unit_sphere());
-        return true;
+        Vec3 reflected = reflect(r_in.direction().normalized(), hit.normal).normalized() +
+                         (fuzz * Vec3::random_unit());
+        result.scattered = r_in.redirect(hit.p, reflected);
+        // 在光线的波长处采样反射率
+        result.attenuation = albedo.value(r_in.wavelength());
+        return dot(reflected, hit.normal) > 0;
     }
 };
 ```
 
-*优势：*
-- 真实金属（铜、金、银）的光谱反射曲线
-- 自然呈现金属的色彩倾向
+==== 示例：色散材质
+
+```cpp
+class Dielectric : public Material {
+    double base_index;  // 基础折射率（Cauchy 方程中的 A）
+    double dispersion;  // 色散系数（Cauchy 方程中的 B，单位：μm²）
+    
+public:
+    // Cauchy 方程：n = A + B/λ²
+    // 玻璃：A ≈ 1.5, B ≈ 0.004-0.01 μm²
+    // 钻石：A ≈ 2.4, B ≈ 0.01-0.02 μm²
+    Dielectric(double ri, double dispersion_coeff = 0.3)
+        : base_index(ri), dispersion(dispersion_coeff) {}
+    
+    // 使用 Cauchy 方程计算给定波长的折射率
+    double refractive_index(double wavelength_nm) const {
+        if (dispersion == 0.0) return base_index;
+        double lambda_um = wavelength_nm / 1000.0;  // nm → μm
+        return base_index + dispersion / (lambda_um * lambda_um);
+    }
+    
+    bool scatter(const Ray& r_in, const HitResult& hit, 
+                 ScatterResult& result) const override {
+        result.attenuation = 1.0;
+        // 根据光线波长计算折射率
+        double ri = refractive_index(r_in.wavelength());
+        // ... 折射/反射逻辑
+    }
+};
+```
+
+*核心特性：*
+- **金属**：完整光谱存储，波长处采样（`albedo.value(wavelength)`）
+- **电介质**：Cauchy 方程实现色散（`n = A + B/λ²`）
+- **光线追踪**：每条光线携带波长信息（`Ray.wavelength()`）
+- **颜色转换**：最终通过 CIE XYZ 转换回 RGB
 
 === 向后兼容性
 
@@ -1745,29 +1761,26 @@ Color rgb = pixel_spectrum.toColor();  // Spectrum → RGB
 4. *混合渲染*：预览用 RGB，最终渲染用 Spectrum
 
 *适用场景：*
-- ✓ 需要物理准确性的科学可视化
-- ✓ 宝石、金属等材质的真实渲染
-- ✓ 色散、荧光等波长相关效果
+- ✓ 需要色散效果的场景（棱镜、彩虹）
+- ✓ 需要物理准确波长模拟的科学可视化
+- ✓ 宝石等具有强色散材质的渲染
 - ✗ 实时渲染（性能开销大）
 - ✗ 简单场景（RGB 已足够）
 
 === 扩展应用
 
-==== 色散模拟
+==== 色散模拟（Cauchy 方程）
 
 ```cpp
 class Dielectric : public Material {
-    Spectrum albedo;
+    double base_index;  // 基础折射率 A
+    double dispersion;  // 色散系数 B（单位：μm²）
     
-    // 波长相关折射率（Sellmeier 公式）
-    double refractionIndex(double wavelength) const {
-        // 例：BK7 玻璃
-        double lambda2 = (wavelength / 1000.0) * (wavelength / 1000.0);
-        double n2 = 1.0 + 
-            1.03961212 * lambda2 / (lambda2 - 0.00600069867) +
-            0.231792344 * lambda2 / (lambda2 - 0.0200179144) +
-            1.01046945 * lambda2 / (lambda2 - 103.560653);
-        return std::sqrt(n2);
+    // 波长相关折射率（Cauchy 方程）
+    double refractive_index(double wavelength_nm) const {
+        if (dispersion == 0.0) return base_index;
+        double lambda_um = wavelength_nm / 1000.0;  // nm → μm
+        return base_index + dispersion / (lambda_um * lambda_um);
     }
 };
 ```
@@ -1801,13 +1814,13 @@ for (int i = 0; i < 60; ++i) {
 - 核心颜色表示：`Vec3` → `Spectrum` (60 samples)
 - 转换系统：Smits 1999 RGB ↔ Spectrum
 - 色彩科学：CIE XYZ 色彩匹配函数
-- 材质系统：全面支持光谱 BRDF
+- 材质系统：支持波长相关的材质属性
 
 *技术亮点：*
 - 物理准确的可见光建模（400-700nm）
 - 能量守恒的转换算法
 - 完整的向后兼容性
-- 支持色散、荧光等高级效果
+- 支持色散等波长相关效果
 
 *实现参考：*
 - PBRT-v3 光谱系统设计
@@ -1846,8 +1859,8 @@ for (int i = 0; i < 60; ++i) {
 - 从 RGB 到光谱的架构重构（60 个波长样本）
 - Smits 1999 RGB ↔ Spectrum 转换算法
 - CIE XYZ 色彩匹配与标准观察者
-- 光谱 BRDF 材质系统
-- 支持色散、黑体辐射等物理效果
+- 波长相关的材质属性（色散、波长采样）
+- 支持色散等物理效果
 
 渲染器性能指标：
 - 支持数万级物体场景（BVH 加速）
