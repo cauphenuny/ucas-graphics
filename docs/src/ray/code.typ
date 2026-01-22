@@ -1672,7 +1672,7 @@ class Metal : public Material {
     
 public:
     Metal(const Color& color, double fuzz = 0) 
-        : albedo(Spectrum::fromRGB(color)), fuzz(fuzz) {}
+        : albedo(Spectrum::fromRGB(color, SpectrumType::Reflectance)), fuzz(fuzz) {}
     
     bool scatter(const Ray& r_in, const HitResult& hit, 
                  ScatterResult& result) const override {
@@ -1782,7 +1782,8 @@ inline double blackbody(double lambda, double T) {
     const double kb = 1.380649e-23;    // Boltzmann 常数
     
     double l = lambda * 1e-9;  // nm → m
-    return (2 * h * c * c) / (l^5 * (exp(h*c / (l*kb*T)) - 1));
+    double l5 = l * l * l * l * l;
+    return (2 * h * c * c) / (l5 * (std::exp((h*c) / (l*kb*T)) - 1));
 }
 
 // 生成不同色温的光源光谱
