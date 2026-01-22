@@ -1782,8 +1782,7 @@ inline double blackbody(double lambda, double T) {
     const double kb = 1.380649e-23;    // Boltzmann 常数
     
     double l = lambda * 1e-9;  // nm → m
-    double l5 = l * l * l * l * l;
-    return (2 * h * c * c) / (l5 * (std::exp((h*c) / (l*kb*T)) - 1));
+    return (2 * h * c * c) / (std::pow(l, 5) * (std::exp((h*c) / (l*kb*T)) - 1));
 }
 
 // 生成不同色温的光源光谱
