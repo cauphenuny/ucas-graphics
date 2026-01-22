@@ -4,6 +4,7 @@
 #include "hittable.h"
 #include "material.h"
 #include "ray.h"
+#include "spectrum.h"
 #include "vec.h"
 
 #include <memory>
@@ -76,7 +77,7 @@ public:
 
     double pdf_value(const Point3& o, const Vec3& v) const override {
         HitResult result;
-        Ray ray(o, v);
+        Ray ray(o, v, Spectrum::visible_min);
         if (!hit(ray, Interval(0.001, infinity), result)) return 0.0;
 
         auto cos_theta_max = std::sqrt(1 - radius * radius / (center.at(0) - o).sqrnorm());

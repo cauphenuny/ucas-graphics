@@ -3,10 +3,11 @@
 #include "hittable.h"
 #include "pdf.h"
 #include "ray.h"
+#include "spectrum.h"
 #include "texture.h"
 
 struct ScatterResult {
-    Color attenuation;
+    double attenuation = 0.0;
     std::variant<std::unique_ptr<Vec3PDF>, Ray> scattered;
 };
 
@@ -16,7 +17,7 @@ public:
     virtual bool scatter(const Ray& r_in, const HitResult& hit, ScatterResult& result) const {
         return false;
     }
-    virtual Color emit(const Ray& r_in, const HitResult& hit) const { return Color(0, 0, 0); }
+    virtual double emit(const Ray& r_in, const HitResult& hit) const { return 0.0; }
     virtual double
     scattering_pdf(const Ray& r_in, const HitResult& hit, const Ray& scattered) const {
         return 1.0;
@@ -32,8 +33,8 @@ public:
 
     bool scatter(const Ray& r_in, const HitResult& hit, ScatterResult& result) const override {
         result.scattered = std::make_unique<CosinePDF>(hit.normal);
-        result.attenuation = tex->value(hit.u, hit.v, hit.p);
-        return true;
+        result.attenuation = tex->value(hit.u, hit.v, hit.p).value(r_in.wavelength());
+        return result.attenuation > 0.0;
     }
 
     double
@@ -44,16 +45,16 @@ public:
 };
 
 class Metal : public Material, public traits::CreateShared<Metal> {
-    Color albedo;
+    Spectrum albedo;
     double fuzz;
 
 public:
-    Metal(const Color& albedo, double fuzz = 0) : albedo(albedo), fuzz(fuzz) {}
+    Metal(const Color& color, double fuzz = 0) : albedo(color), fuzz(fuzz) {}
     bool scatter(const Ray& r_in, const HitResult& hit, ScatterResult& result) const override {
         Vec3 reflected = reflect(r_in.direction().normalized(), hit.normal).normalized() +
                          (fuzz * Vec3::random_unit());
-        result.scattered = Ray(hit.p, reflected, r_in.time());
-        result.attenuation = albedo;
+        result.scattered = r_in.redirect(hit.p, reflected);
+        result.attenuation = albedo.value(r_in.wavelength());
         return dot(reflected, hit.normal) > 0;
     }
 };
@@ -65,7 +66,7 @@ public:
     Dielectric(double ri) : refraction_index(ri) {}
 
     bool scatter(const Ray& r_in, const HitResult& hit, ScatterResult& result) const override {
-        result.attenuation = Color(1.0, 1.0, 1.0);
+        result.attenuation = 1.0;
         double etai_over_etat = hit.front_face ? (1.0 / refraction_index) : refraction_index;
 
         Vec3 unit_direction = r_in.direction().normalized();
@@ -81,7 +82,7 @@ public:
             direction = refract(unit_direction, hit.normal, etai_over_etat);
         }
 
-        result.scattered = Ray(hit.p, direction, r_in.time());
+        result.scattered = r_in.redirect(hit.p, direction);
         return true;
     }
 
@@ -100,11 +101,11 @@ public:
     Light(std::shared_ptr<Texture> tex) : tex(tex) {}
     Light(const Color& color) : tex(std::make_shared<ColorTexture>(color)) {}
 
-    Color emit(const Ray& r_in, const HitResult& hit) const override {
+    double emit(const Ray& r_in, const HitResult& hit) const override {
         if (!hit.front_face) {
-            return Color(0, 0, 0);
+            return 0.0;
         }
-        return tex->value(hit.u, hit.v, hit.p);
+        return tex->value(hit.u, hit.v, hit.p).value(r_in.wavelength()) * 1.0;
     }
 };
 
@@ -117,8 +118,8 @@ public:
 
     bool scatter(const Ray& r_in, const HitResult& hit, ScatterResult& result) const override {
         result.scattered = std::make_unique<SpherePDF>();
-        result.attenuation = tex->value(hit.u, hit.v, hit.p);
-        return true;
+        result.attenuation = tex->value(hit.u, hit.v, hit.p).value(r_in.wavelength());
+        return result.attenuation > 0.0;
     }
 
     double

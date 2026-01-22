@@ -3,8 +3,10 @@
 #include "hittable.h"
 #include "material.h"
 #include "pdf.h"
+#include "spectrum.h"
 
 #include <atomic>
+#include <cmath>
 #include <format>
 #include <iostream>
 #include <vector>
@@ -43,16 +45,16 @@ struct Camera {
                 for (int sj = 0; sj < sqrt_spp; sj++) {
                     for (int si = 0; si < sqrt_spp; si++) {
                         Ray r = get_ray(i, j, si, sj);
-                        auto color = ray_color(r, world, sample_target, max_depth);
-                        if (color.r() != color.r() || color.g() != color.g() ||
-                            color.b() != color.b()) {
+                        auto intensity = ray_color(r, world, sample_target, max_depth);
+                        if (!std::isfinite(intensity)) {
                             continue;
                         }
                         num_samples++;
-                        pixel_color += color;
+                        pixel_color += spectral_sample_to_color(intensity, r.wavelength());
                     }
                 }
-                image[j * image_width + i] = pixel_color / (double)num_samples;
+                image[j * image_width + i] =
+                    num_samples ? (pixel_color / (double)num_samples) : pixel_color;
             }
             counter++;
             if (verbose) {
@@ -74,11 +76,18 @@ private:
     Vec3 u, v, w;
     Vec3 defocus_disk_u;
     Vec3 defocus_disk_v;
+    Spectrum background_spectrum;
+    double wavelength_range;
+    double wavelength_pdf;
 
     void initialize() {
         image_height = std::max(static_cast<int>(image_width / aspect_ratio), 1);
         auto ratio = (double)image_width / (double)image_height;
         center = lookfrom;
+
+        background_spectrum = Spectrum(background);
+        wavelength_range = Spectrum::visible_max - Spectrum::visible_min;
+        wavelength_pdf = 1.0 / wavelength_range;
 
         sqrt_spp = int(std::sqrt(samples_per_pixel));
         recip_sqrt_spp = 1.0 / sqrt_spp;
@@ -126,45 +135,56 @@ private:
             pixel00_loc + ((i + offset.x()) * pixel_delta_u) + ((j + offset.y()) * pixel_delta_v);
         auto ray_origin = (defocus_angle <= 0) ? center : sample_defocus_disk();
         auto ray_time = random_double();
-        return Ray(ray_origin, pixel_sample - ray_origin, ray_time);
+        auto wavelength = random_double(Spectrum::visible_min, Spectrum::visible_max);
+        return Ray(ray_origin, pixel_sample - ray_origin, wavelength, ray_time);
     }
 
     auto ray_color(const Ray& ray, const Hittable& world, Samplable* sample_target, int depth)
-        -> Color const {
-        if (depth <= 0) return Color(0, 0, 0);
-        auto center = Point3(0, 0, -1);
+        -> double {
+        if (depth <= 0) return 0.0;
+
         HitResult hit_result;
         if (!world.hit(ray, Interval(0.001, infinity), hit_result)) {
-            return background;
+            return background_spectrum.value(ray.wavelength());
         }
+
         ScatterResult scatter_result;
-        Color color_emit = hit_result.mat->emit(ray, hit_result);
-        double sampling_prob, scattering_prob;
+        double emitted = hit_result.mat->emit(ray, hit_result);
 
         if (!hit_result.mat->scatter(ray, hit_result, scatter_result)) {
-            return color_emit;
+            return emitted;
         }
 
         auto& [attenuation, scattered] = scatter_result;
+        if (attenuation <= 0.0) {
+            return emitted;
+        }
 
-        auto color_scatter = Match{std::move(scattered)}(
-            [&](Ray ray) -> Color {
-                return attenuation * ray_color(ray, world, sample_target, depth - 1);
+        double scatter_contrib = Match{std::move(scattered)}(
+            [&](Ray scattered_ray) -> double {
+                return attenuation * ray_color(scattered_ray, world, sample_target, depth - 1);
             },
-            [&](std::unique_ptr<Vec3PDF> pdf) -> Color {
+            [&](std::unique_ptr<Vec3PDF> pdf) -> double {
                 std::unique_ptr<Vec3PDF> scatter_pdf =
                     sample_target ? std::make_unique<MixturePDF>(
                                         std::make_unique<ObjectPDF>(*sample_target, hit_result.p),
                                         std::move(pdf))
                                   : std::move(pdf);
-                auto scattered_ray = Ray(hit_result.p, scatter_pdf->generate(), ray.time());
+                auto scattered_ray = ray.redirect(hit_result.p, scatter_pdf->generate());
                 double sampling_prob = scatter_pdf->value(scattered_ray.direction());
+                if (sampling_prob <= 0.0) {
+                    return 0.0;
+                }
                 double scatter_prob =
                     hit_result.mat->scattering_pdf(ray, hit_result, scattered_ray);
-                Color sampled_color = ray_color(scattered_ray, world, sample_target, depth - 1);
-                return (attenuation * scatter_prob * sampled_color) / sampling_prob;
+                double sampled = ray_color(scattered_ray, world, sample_target, depth - 1);
+                return (attenuation * scatter_prob * sampled) / sampling_prob;
             });
 
-        return color_emit + color_scatter;
+        return emitted + scatter_contrib;
+    }
+
+    Color spectral_sample_to_color(double intensity, double wavelength) const {
+        return spectralRadianceToRGB(intensity, wavelength, wavelength_pdf);
     }
 };

@@ -19,7 +19,7 @@ public:
     }
     BoundingBox bounding_box() const override { return bbox; }
     bool hit(const Ray& ray, Interval interval, HitResult& result) const override {
-        Ray moved_ray(ray.origin() - offset, ray.direction(), ray.time());
+        Ray moved_ray = ray.redirect(ray.origin() - offset, ray.direction());
         if (!object->hit(moved_ray, interval, result)) return false;
         result.p += offset;
         return true;
@@ -80,7 +80,7 @@ public:
         auto origin = transform::rotate<axis>(ray.origin(), cos_theta, -sin_theta);
         auto direction = transform::rotate<axis>(ray.direction(), cos_theta, -sin_theta);
 
-        Ray rotated_ray(origin, direction, ray.time());
+        Ray rotated_ray = ray.redirect(origin, direction);
 
         if (!object->hit(rotated_ray, interval, result)) return false;
 
