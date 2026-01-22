@@ -40,7 +40,7 @@ struct Camera {
 #pragma omp parallel for
         for (int j = 0; j < image_height; ++j) {
             for (int i = 0; i < image_width; ++i) {
-                Color pixel_color(0, 0, 0);
+                Spectrum pixel_spectrum(0);
                 int num_samples = 0;
                 for (int sj = 0; sj < sqrt_spp; sj++) {
                     for (int si = 0; si < sqrt_spp; si++) {
@@ -50,11 +50,15 @@ struct Camera {
                             continue;
                         }
                         num_samples++;
-                        pixel_color += spectral_sample_to_color(intensity, r.wavelength());
+                        // 累积到光谱的对应波长bin中
+                        accumulate_spectral_sample(pixel_spectrum, intensity, r.wavelength());
                     }
                 }
-                image[j * image_width + i] =
-                    num_samples ? (pixel_color / (double)num_samples) : pixel_color;
+                // 归一化后转换为RGB
+                if (num_samples > 0) {
+                    pixel_spectrum *= (1.0 / num_samples);
+                }
+                image[j * image_width + i] = pixel_spectrum.toColor();
             }
             counter++;
             if (verbose) {
@@ -184,7 +188,17 @@ private:
         return emitted + scatter_contrib;
     }
 
-    Color spectral_sample_to_color(double intensity, double wavelength) const {
-        return spectralRadianceToRGB(intensity, wavelength, wavelength_pdf);
+    // 将单波长采样累积到Spectrum对象中
+    void accumulate_spectral_sample(Spectrum& spectrum, double intensity, double wavelength) const {
+        if (intensity <= 0.0) return;
+        // 找到对应的bin并累加
+        // 由于均匀采样波长，每个采样对整个光谱的贡献是 intensity * wavelength_range / nSamples
+        // 但我们要写入对应的bin，所以直接按bin累加，最后均值会自动处理
+        double t = (wavelength - Spectrum::lambdaStart) / (Spectrum::lambdaEnd - Spectrum::lambdaStart);
+        int bin = static_cast<int>(t * Spectrum::nSamples);
+        bin = std::clamp(bin, 0, Spectrum::nSamples - 1);
+        // 乘以 nSamples 是因为我们均匀采样波长，但只写入一个bin
+        // 这样当采样足够多时，每个bin的平均值就是正确的光谱值
+        spectrum[bin] += intensity * Spectrum::nSamples;
     }
 };
