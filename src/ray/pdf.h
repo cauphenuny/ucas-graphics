@@ -42,3 +42,23 @@ public:
     }
     Vec3 generate() const override { return objects.random(origin); }
 };
+
+class MixturePDF : public Vec3PDF {
+    const Vec3PDF &p0, &p1;
+    double weight_1;
+
+public:
+    MixturePDF(const Vec3PDF& p0, const Vec3PDF& p1, double w1 = 0.5)
+        : p0(p0), p1(p1), weight_1(w1) {}
+    double value(const Vec3& direction) const override {
+        return (1 - weight_1) * p0.value(direction) + weight_1 * p1.value(direction);
+    }
+
+    Vec3 generate() const override {
+        if (random_double() < weight_1) {
+            return p1.generate();
+        } else {
+            return p0.generate();
+        }
+    }
+};

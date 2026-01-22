@@ -1,16 +1,19 @@
 #pragma once
 
 #include "hittable.h"
-#include "onb.h"
+#include "pdf.h"
 #include "ray.h"
 #include "texture.h"
+
+struct ScatterResult {
+    Color attenuation;
+    std::variant<std::unique_ptr<Vec3PDF>, Ray> scattered;
+};
 
 class Material {
 public:
     virtual ~Material() = default;
-    virtual bool scatter(
-        const Ray& r_in, const HitResult& hit, Color& attenuation, Ray& scattered,
-        double& pdf) const {
+    virtual bool scatter(const Ray& r_in, const HitResult& hit, ScatterResult& result) const {
         return false;
     }
     virtual Color emit(const Ray& r_in, const HitResult& hit) const { return Color(0, 0, 0); }
@@ -27,17 +30,9 @@ public:
     Lambertian(const Color& albedo) : tex(std::make_shared<ColorTexture>(albedo)) {}
     Lambertian(const std::shared_ptr<Texture>& texture) : tex(texture) {}
 
-    bool scatter(
-        const Ray& r_in, const HitResult& hit, Color& attenuation, Ray& scattered,
-        double& pdf) const override {
-        OrthonormalBasis uvw(hit.normal);
-        auto scatter_direction = uvw.transform(Vec3::random_cosine_z());
-        if (scatter_direction.near_zero()) {
-            scatter_direction = hit.normal;
-        }
-        scattered = Ray(hit.p, scatter_direction, r_in.time());
-        attenuation = tex->value(hit.u, hit.v, hit.p);
-        pdf = dot(uvw.w(), scattered.direction().normalized()) / pi;
+    bool scatter(const Ray& r_in, const HitResult& hit, ScatterResult& result) const override {
+        result.scattered = std::make_unique<CosinePDF>(hit.normal);
+        result.attenuation = tex->value(hit.u, hit.v, hit.p);
         return true;
     }
 
@@ -54,14 +49,12 @@ class Metal : public Material, public traits::CreateShared<Metal> {
 
 public:
     Metal(const Color& albedo, double fuzz = 0) : albedo(albedo), fuzz(fuzz) {}
-    bool scatter(
-        const Ray& r_in, const HitResult& hit, Color& attenuation, Ray& scattered,
-        double& pdf) const override {
+    bool scatter(const Ray& r_in, const HitResult& hit, ScatterResult& result) const override {
         Vec3 reflected = reflect(r_in.direction().normalized(), hit.normal).normalized() +
                          (fuzz * Vec3::random_unit());
-        scattered = Ray(hit.p, reflected, r_in.time());
-        attenuation = albedo;
-        return dot(scattered.direction(), hit.normal) > 0;
+        result.scattered = Ray(hit.p, reflected, r_in.time());
+        result.attenuation = albedo;
+        return dot(reflected, hit.normal) > 0;
     }
 };
 
@@ -71,10 +64,8 @@ class Dielectric : public Material, public traits::CreateShared<Dielectric> {
 public:
     Dielectric(double ri) : refraction_index(ri) {}
 
-    bool scatter(
-        const Ray& r_in, const HitResult& hit, Color& attenuation, Ray& scattered,
-        double& pdf) const override {
-        attenuation = Color(1.0, 1.0, 1.0);
+    bool scatter(const Ray& r_in, const HitResult& hit, ScatterResult& result) const override {
+        result.attenuation = Color(1.0, 1.0, 1.0);
         double etai_over_etat = hit.front_face ? (1.0 / refraction_index) : refraction_index;
 
         Vec3 unit_direction = r_in.direction().normalized();
@@ -90,7 +81,7 @@ public:
             direction = refract(unit_direction, hit.normal, etai_over_etat);
         }
 
-        scattered = Ray(hit.p, direction, r_in.time());
+        result.scattered = Ray(hit.p, direction, r_in.time());
         return true;
     }
 
@@ -124,12 +115,9 @@ public:
     Isotropic(std::shared_ptr<Texture> tex) : tex(tex) {}
     Isotropic(const Color& color) : tex(std::make_shared<ColorTexture>(color)) {}
 
-    bool scatter(
-        const Ray& r_in, const HitResult& hit, Color& attenuation, Ray& scattered,
-        double& pdf) const override {
-        scattered = Ray(hit.p, Vec3::random_unit(), r_in.time());
-        attenuation = tex->value(hit.u, hit.v, hit.p);
-        pdf = 1 / (4 * pi);
+    bool scatter(const Ray& r_in, const HitResult& hit, ScatterResult& result) const override {
+        result.scattered = std::make_unique<SpherePDF>();
+        result.attenuation = tex->value(hit.u, hit.v, hit.p);
         return true;
     }
 

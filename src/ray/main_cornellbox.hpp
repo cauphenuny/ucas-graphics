@@ -49,6 +49,7 @@ inline int main(int argc, char** argv) {
     if (argc < 2) return 1;
     bool smoke = false;
     bool sample_light = false;
+    bool metalize_box1 = false;
     if (argc > 2) {
         for (int i = 2; i < argc; i++) {
             if (std::string_view(argv[i]) == "--smoke") {
@@ -57,8 +58,14 @@ inline int main(int argc, char** argv) {
             if (std::string_view(argv[i]) == "--sample_light") {
                 sample_light = true;
             }
+            if (std::string_view(argv[i]) == "--metal") {
+                metalize_box1 = true;
+            }
         }
     }
+    std::clog << std::format(
+        "Arguments: smoke={}, sample_light={}, metalize_box1={}\n", smoke, sample_light,
+        metalize_box1);
 
     auto camera = construct_camera();
 
@@ -67,13 +74,21 @@ inline int main(int argc, char** argv) {
     auto red = Lambertian::create(Color(0.65, 0.05, 0.05));
     auto white = Lambertian::create(Color(0.73, 0.73, 0.73));
     auto green = Lambertian::create(Color(0.12, 0.45, 0.15));
+    auto metal = Metal::create(Color(0.8, 0.85, 0.88), 0.0);
     auto emit = Light::create(Color::white() * 15.0);
 
     construct_wall(world, green, red, white, emit);
 
     Quadrilateral light(Point3(343, 554, 332), Vec3(-130, 0, 0), Vec3(0, 0, -105), emit);
 
-    std::shared_ptr<Hittable> box1 = Box::create(Point3(0, 0, 0), Point3(165, 330, 165), white);
+    std::shared_ptr<Material> box1_material;
+    if (metalize_box1) {
+        box1_material = metal;
+    } else {
+        box1_material = white;
+    }
+    std::shared_ptr<Hittable> box1 =
+        Box::create(Point3(0, 0, 0), Point3(165, 330, 165), box1_material);
 
     box1 = box1 | RotateY(15) | Translate(Vec3(265, 0, 295));
 
@@ -87,10 +102,6 @@ inline int main(int argc, char** argv) {
     } else {
         world.add(box1);
         world.add(box2);
-    }
-
-    if (sample_light) {
-        camera.samples_per_pixel = 10;
     }
 
     auto image = camera.render(world, true, sample_light ? &light : nullptr);

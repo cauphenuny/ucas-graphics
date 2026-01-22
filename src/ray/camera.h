@@ -7,7 +7,6 @@
 #include <atomic>
 #include <format>
 #include <iostream>
-#include <optional>
 #include <vector>
 
 struct RenderResult {
@@ -133,27 +132,31 @@ private:
         if (!world.hit(ray, Interval(0.001, infinity), hit_result)) {
             return background;
         }
-        Ray scattered;
-        Color attenuation;
+        ScatterResult scatter_result;
         Color color_emit = hit_result.mat->emit(ray, hit_result);
-        double sampling_pdf, scattering_pdf;
+        double sampling_prob, scattering_prob;
 
-        if (!hit_result.mat->scatter(ray, hit_result, attenuation, scattered, sampling_pdf)) {
+        if (!hit_result.mat->scatter(ray, hit_result, scatter_result)) {
             return color_emit;
         }
 
-        if (lights) {
-            EmissionPDF light_pdf(*lights, hit_result.p);
-            scattered = Ray(hit_result.p, light_pdf.generate(), ray.time());
-            sampling_pdf = light_pdf.value(scattered.direction());
-            scattering_pdf = hit_result.mat->scattering_pdf(ray, hit_result, scattered);
-        } else {
-            scattering_pdf = hit_result.mat->scattering_pdf(ray, hit_result, scattered);
-            sampling_pdf = scattering_pdf;
-        }
+        auto& [attenuation, scattered] = scatter_result;
 
-        auto sampled_color = ray_color(scattered, world, lights, depth - 1);
-        auto color_scatter = (attenuation * scattering_pdf * sampled_color) / sampling_pdf;
+        auto color_scatter = Match{std::move(scattered)}(
+            [&](Ray ray) -> Color {
+                return attenuation * ray_color(ray, world, lights, depth - 1);
+            },
+            [&](std::unique_ptr<Vec3PDF> pdf) -> Color {
+                std::unique_ptr<Vec3PDF> scatter_pdf =
+                    lights ? std::make_unique<MixturePDF>(EmissionPDF(*lights, hit_result.p), *pdf)
+                           : std::move(pdf);
+                auto scattered_ray = Ray(hit_result.p, scatter_pdf->generate(), ray.time());
+                double sampling_prob = scatter_pdf->value(scattered_ray.direction());
+                double scatter_prob =
+                    hit_result.mat->scattering_pdf(ray, hit_result, scattered_ray);
+                Color sampled_color = ray_color(scattered_ray, world, lights, depth - 1);
+                return (attenuation * scatter_prob * sampled_color) / sampling_prob;
+            });
 
         return color_emit + color_scatter;
     }
