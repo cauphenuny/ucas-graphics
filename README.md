@@ -19,3 +19,5 @@ xmake run project1
 
   ![demo](docs/src/mesh/assets/demo.png)
 
+- [Project3: Ray Tracing](docs/p3-ray.pdf) (typst source in `docs/src/ray/`)
+
