@@ -3,6 +3,7 @@
 #include "material.h"
 #include "medium.h"
 #include "shape.h"
+#include "sphere.h"
 #include "transform.h"
 
 #include <fstream>
@@ -51,36 +52,43 @@ inline int main(int argc, char** argv) {
     bool smoke = false;
     bool sample_light = false;
     bool metalize_box1 = false;
+    bool glassize_box2 = false;
     if (argc > 2) {
         for (int i = 2; i < argc; i++) {
             if (std::string_view(argv[i]) == "--smoke") {
                 smoke = true;
             }
-            if (std::string_view(argv[i]) == "--sample_light") {
+            if (std::string_view(argv[i]) == "--light") {
                 sample_light = true;
             }
             if (std::string_view(argv[i]) == "--metal") {
                 metalize_box1 = true;
             }
+            if (std::string_view(argv[i]) == "--glass") {
+                glassize_box2 = true;
+            }
         }
     }
     std::clog << std::format(
-        "Arguments: smoke={}, sample_light={}, metalize_box1={}\n", smoke, sample_light,
-        metalize_box1);
+        "Arguments: smoke={}, sample_light={}, metalize_box1={}, glassize_box2={}\n", smoke,
+        sample_light, metalize_box1, glassize_box2);
 
     auto camera = construct_camera();
 
     HittableList world;
+    SamplableList samples;
 
     auto red = Lambertian::create(Color(0.65, 0.05, 0.05));
     auto white = Lambertian::create(Color(0.73, 0.73, 0.73));
     auto green = Lambertian::create(Color(0.12, 0.45, 0.15));
     auto metal = Metal::create(Color(0.8, 0.85, 0.88), 0.0);
     auto emit = Light::create(Color::white() * 15.0);
+    auto glass = Dielectric::create(1.5);
 
     construct_wall(world, green, red, white, emit);
 
-    Quadrilateral light(Point3(343, 554, 332), Vec3(-130, 0, 0), Vec3(0, 0, -105), emit);
+    auto light =
+        Quadrilateral::create(Point3(343, 554, 332), Vec3(-130, 0, 0), Vec3(0, 0, -105), emit);
 
     std::shared_ptr<Material> box1_material;
     if (metalize_box1) {
@@ -93,19 +101,30 @@ inline int main(int argc, char** argv) {
 
     box1 = box1 | RotateY(15) | Translate(Vec3(265, 0, 295));
 
-    std::shared_ptr<Hittable> box2 = Box::create(Point3(0, 0, 0), Point3(165, 165, 165), white);
+    auto sphere2 = Sphere::create(Point3(190, 90, 190), 90, glass);
+    auto box2 = Box::create(Point3(0, 0, 0), Point3(165, 165, 165), white) | RotateY(-18) |
+                Translate(Vec3(130, 0, 65));
 
-    box2 = box2 | RotateY(-18) | Translate(Vec3(130, 0, 65));
+    std::shared_ptr<Hittable> object2;
+    if (glassize_box2) {
+        object2 = sphere2;
+    } else {
+        object2 = box2;
+    }
 
     if (smoke) {
         world.add(ConstantMedium::create(box1, 0.01, Color::black()));
-        world.add(ConstantMedium::create(box2, 0.01, Color::white()));
+        world.add(ConstantMedium::create(object2, 0.01, Color::white()));
     } else {
         world.add(box1);
-        world.add(box2);
+        world.add(object2);
     }
 
-    auto image = camera.render(world, true, sample_light ? &light : nullptr);
+    if (sample_light) {
+        samples.add(light);
+    }
+
+    auto image = camera.render(world, true, samples.size() ? &samples : nullptr);
 
     auto file = std::ofstream(argv[1], std::ios::binary | std::ios::out);
     dump(image, file);

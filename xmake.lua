@@ -1,4 +1,4 @@
-add_rules("mode.debug", "mode.release")
+add_rules("mode.debug", "mode.release", "mode.releasedbg")
 set_languages("c99", "c++20")
 add_requires("opengl", {system = true})
 add_requires("glut", {system = true})

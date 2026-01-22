@@ -8,7 +8,7 @@
 
 #include <memory>
 
-class Sphere : public Hittable, public traits::CreateShared<Sphere> {
+class Sphere : public Hittable, public Samplable, public traits::CreateShared<Sphere> {
     double radius;
     Ray center;
     std::shared_ptr<Material> mat;
@@ -72,5 +72,23 @@ public:
         result.set_face_normal(ray, outward_normal);
         result.mat = mat;
         return true;
+    }
+
+    double pdf_value(const Point3& o, const Vec3& v) const override {
+        HitResult result;
+        Ray ray(o, v);
+        if (!hit(ray, Interval(0.001, infinity), result)) return 0.0;
+
+        auto cos_theta_max = std::sqrt(1 - radius * radius / (center.at(0) - o).sqrnorm());
+        auto solid_angle = 2 * pi * (1 - cos_theta_max);
+
+        return 1 / solid_angle;
+    }
+
+    Vec3 random(const Point3& o) const override {
+        auto direction = center.at(0) - o;
+        auto distance_squared = direction.sqrnorm();
+        OrthonormalBasis uvw(direction);
+        return uvw.transform(Vec3::random_to_sphere(radius, distance_squared));
     }
 };

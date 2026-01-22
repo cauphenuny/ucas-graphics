@@ -29,7 +29,7 @@ struct Camera {
     double defocus_angle = 0;  // variation angle of rays through each pixel, unit: angle
     double focus_dist = 10;
 
-    auto render(const Hittable& world, bool verbose = false, Samplable* lights = nullptr)
+    auto render(const Hittable& world, bool verbose = false, Samplable* sample_target = nullptr)
         -> RenderResult {
         initialize();
         auto image = std::vector<Color>(image_width * image_height);
@@ -39,13 +39,20 @@ struct Camera {
         for (int j = 0; j < image_height; ++j) {
             for (int i = 0; i < image_width; ++i) {
                 Color pixel_color(0, 0, 0);
+                int num_samples = 0;
                 for (int sj = 0; sj < sqrt_spp; sj++) {
                     for (int si = 0; si < sqrt_spp; si++) {
                         Ray r = get_ray(i, j, si, sj);
-                        pixel_color += ray_color(r, world, lights, max_depth);
+                        auto color = ray_color(r, world, sample_target, max_depth);
+                        if (color.r() != color.r() || color.g() != color.g() ||
+                            color.b() != color.b()) {
+                            continue;
+                        }
+                        num_samples++;
+                        pixel_color += color;
                     }
                 }
-                image[j * image_width + i] = pixel_color * pixel_samples_scale;
+                image[j * image_width + i] = pixel_color / (double)num_samples;
             }
             counter++;
             if (verbose) {
@@ -58,7 +65,6 @@ struct Camera {
 
 private:
     int image_height;
-    double pixel_samples_scale;
     int sqrt_spp;
     double recip_sqrt_spp;
     Point3 center;       // camera center
@@ -75,7 +81,6 @@ private:
         center = lookfrom;
 
         sqrt_spp = int(std::sqrt(samples_per_pixel));
-        pixel_samples_scale = 1.0 / (sqrt_spp * sqrt_spp);
         recip_sqrt_spp = 1.0 / sqrt_spp;
 
         // viewport dimensions
@@ -124,8 +129,8 @@ private:
         return Ray(ray_origin, pixel_sample - ray_origin, ray_time);
     }
 
-    auto ray_color(const Ray& ray, const Hittable& world, Samplable* lights, int depth)
-        -> Vec3 const {
+    auto ray_color(const Ray& ray, const Hittable& world, Samplable* sample_target, int depth)
+        -> Color const {
         if (depth <= 0) return Color(0, 0, 0);
         auto center = Point3(0, 0, -1);
         HitResult hit_result;
@@ -144,17 +149,19 @@ private:
 
         auto color_scatter = Match{std::move(scattered)}(
             [&](Ray ray) -> Color {
-                return attenuation * ray_color(ray, world, lights, depth - 1);
+                return attenuation * ray_color(ray, world, sample_target, depth - 1);
             },
             [&](std::unique_ptr<Vec3PDF> pdf) -> Color {
                 std::unique_ptr<Vec3PDF> scatter_pdf =
-                    lights ? std::make_unique<MixturePDF>(EmissionPDF(*lights, hit_result.p), *pdf)
-                           : std::move(pdf);
+                    sample_target ? std::make_unique<MixturePDF>(
+                                        std::make_unique<ObjectPDF>(*sample_target, hit_result.p),
+                                        std::move(pdf))
+                                  : std::move(pdf);
                 auto scattered_ray = Ray(hit_result.p, scatter_pdf->generate(), ray.time());
                 double sampling_prob = scatter_pdf->value(scattered_ray.direction());
                 double scatter_prob =
                     hit_result.mat->scattering_pdf(ray, hit_result, scattered_ray);
-                Color sampled_color = ray_color(scattered_ray, world, lights, depth - 1);
+                Color sampled_color = ray_color(scattered_ray, world, sample_target, depth - 1);
                 return (attenuation * scatter_prob * sampled_color) / sampling_prob;
             });
 

@@ -85,7 +85,9 @@ public:
 class SamplableList : public Samplable, public traits::CreateShared<SamplableList> {
     std::vector<std::shared_ptr<Samplable>> objects;
 
+public:
     double pdf_value(const Point3& o, const Vec3& v) const override {
+        if (!objects.size()) return 0.0;
         double weight = 1.0 / objects.size();
         double accum = 0.0;
         for (const auto& object : objects) {
@@ -95,7 +97,12 @@ class SamplableList : public Samplable, public traits::CreateShared<SamplableLis
     }
 
     Vec3 random(const Point3& o) const override {
+        if (!objects.size()) return Vec3{0, 0, 0};
         int index = random_int(0, objects.size() - 1);
         return objects[index]->random(o);
     }
+
+    void add(const std::shared_ptr<Samplable>& object) { objects.push_back(object); }
+
+    size_t size() const { return objects.size(); }
 };

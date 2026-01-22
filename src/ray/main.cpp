@@ -18,12 +18,12 @@ int main(int argc, char** argv) {
     switch (id) {
         case 0: entrance = demo::final0::main; break;
         case 1: entrance = demo::final1::main; break;
+        case 2: entrance = demo::cornell::main; break;
         case 3: entrance = demo::earth::main; break;
         case 4: entrance = demo::perlin::main; break;
         case 5: entrance = demo::shapes::main; break;
         case 6: entrance = demo::mesh::main; break;
         case 7: entrance = demo::light::main; break;
-        case 8: entrance = demo::cornell::main; break;
         default: break;
     }
     if (!entrance) return -1;
