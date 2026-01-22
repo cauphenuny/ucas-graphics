@@ -14,7 +14,7 @@ inline auto construct_camera() {
     Camera cam;
     cam.aspect_ratio = 16.0 / 9.0;
     cam.image_width = 800;
-    cam.samples_per_pixel = 5000;
+    cam.samples_per_pixel = 10000;
     cam.max_depth = 50;
     cam.vfov = 40.0;
     cam.lookfrom = Point3(278, 278, -800);
@@ -83,7 +83,7 @@ inline int main(int argc, char** argv) {
     auto green = Lambertian::create(Color(0.12, 0.45, 0.15));
     auto metal = Metal::create(Color(0.8, 0.85, 0.88), 0.0);
     auto emit = Light::create(Color::white() * 15.0);
-    auto glass = Dielectric::create(1.5);
+    auto glass = Dielectric::create(1.2, 0.2);
 
     construct_wall(world, green, red, white, emit);
 
@@ -101,7 +101,7 @@ inline int main(int argc, char** argv) {
 
     box1 = box1 | RotateY(15) | Translate(Vec3(265, 0, 295));
 
-    auto sphere2 = Sphere::create(Point3(190, 90, 190), 90, glass);
+    auto sphere2 = Sphere::create(Point3(200, 140, 200), 140, glass);
     auto box2 = Box::create(Point3(0, 0, 0), Point3(165, 165, 165), white) | RotateY(-18) |
                 Translate(Vec3(130, 0, 65));
 

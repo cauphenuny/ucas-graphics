@@ -67,7 +67,7 @@ public:
     // Constructor with optional dispersion (Cauchy equation: n = A + B/λ²)
     // For glass: typical A ≈ 1.5, B ≈ 0.004-0.01 μm²
     // For diamond: A ≈ 2.4, B ≈ 0.01-0.02 μm²
-    Dielectric(double ri, double dispersion_coeff = 0.3)
+    Dielectric(double ri, double dispersion_coeff = 0.05)
         : base_index(ri), dispersion(dispersion_coeff) {}
 
     // Calculate refractive index at given wavelength using Cauchy's equation
