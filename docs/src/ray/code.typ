@@ -1373,7 +1373,7 @@ $ L_o approx L_e + (f_r dot p_"scatter" dot L_i) / p_"sample" $
 
 *光谱渲染的优势：*
 1. *物理准确性*：直接模拟光的波长特性
-2. *色散模拟*：棱镜、彩虹等色散现象（通过波长相关折射率）
+2. *色散模拟*：棱镜等色散现象（通过波长相关折射率）
 3. *波长采样*：材质属性可以在特定波长处采样
 4. *色彩管理*：更准确的色彩空间转换（通过 CIE XYZ）
 
@@ -1756,12 +1756,9 @@ Color rgb = pixel_spectrum.toColor();  // Spectrum → RGB
 
 *优化策略：*
 1. *惰性初始化*：转换表仅初始化一次
-2. *SIMD 向量化*：可用 AVX 指令加速（8 个 double 并行）
-3. *自适应采样*：重要波长区域增加采样密度
-4. *混合渲染*：预览用 RGB，最终渲染用 Spectrum
 
 *适用场景：*
-- ✓ 需要色散效果的场景（棱镜、彩虹）
+- ✓ 需要色散效果的场景（棱镜）
 - ✓ 需要物理准确波长模拟的科学可视化
 - ✓ 宝石等具有强色散材质的渲染
 - ✗ 实时渲染（性能开销大）
@@ -1785,26 +1782,10 @@ class Dielectric : public Material {
 };
 ```
 
-==== 黑体辐射
-
-```cpp
-// Planck 定律
-inline double blackbody(double lambda, double T) {
-    const double c = 299792458.0;      // 光速
-    const double h = 6.62607015e-34;  // Planck 常数
-    const double kb = 1.380649e-23;    // Boltzmann 常数
-    
-    double l = lambda * 1e-9;  // nm → m
-    return (2 * h * c * c) / (std::pow(l, 5) * (std::exp((h*c) / (l*kb*T)) - 1));
-}
-
-// 生成不同色温的光源光谱
-Spectrum lightSpectrum;
-for (int i = 0; i < 60; ++i) {
-    double lambda = 400 + i * 5;  // 400-700nm
-    lightSpectrum[i] = blackbody(lambda, 6500);  // D65 (6500K)
-}
-```
+*实际应用：*
+- 玻璃、水晶的色散效果
+- 棱镜分光现象
+- 不同波长的不同折射路径
 
 === 小结
 
@@ -1820,7 +1801,7 @@ for (int i = 0; i < 60; ++i) {
 - 物理准确的可见光建模（400-700nm）
 - 能量守恒的转换算法
 - 完整的向后兼容性
-- 支持色散等波长相关效果
+- 支持色散波长相关效果
 
 *实现参考：*
 - PBRT-v3 光谱系统设计
@@ -1860,7 +1841,7 @@ for (int i = 0; i < 60; ++i) {
 - Smits 1999 RGB ↔ Spectrum 转换算法
 - CIE XYZ 色彩匹配与标准观察者
 - 波长相关的材质属性（色散、波长采样）
-- 支持色散等物理效果
+- 支持色散物理效果
 
 渲染器性能指标：
 - 支持数万级物体场景（BVH 加速）
