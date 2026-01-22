@@ -30,7 +30,7 @@ inline auto construct_camera() {
 }
 
 inline auto floor() {
-    Objects boxes;
+    HittableList boxes;
     auto ground = Lambertian::create(Color(0.48, 0.83, 0.53));
     int boxes_per_side = 20;
     for (int i = 0; i < boxes_per_side; i++) {
@@ -77,7 +77,7 @@ inline auto volumetic_fog() {
 }
 
 struct SubsurfaceSphere : Hittable, traits::CreateShared<SubsurfaceSphere> {
-    Objects container;
+    HittableList container;
     SubsurfaceSphere(Point3 center, double radius, double density, Color color) {
         auto boundary = Sphere::create(center, radius, Dielectric::create(1.5));
         auto content = ConstantMedium::create(boundary, density, color);
@@ -102,7 +102,7 @@ mesh(const char* path, double size, std::optional<Color> color, double density =
     auto metal = Metal::create(Color::silver(), 0.05);
     auto glass = Dielectric::create(1.5);
     auto boundary = TriangleMesh::create(mesh.get(), glass, Point3(0, 0, 0), size);
-    auto container = Objects::create();
+    auto container = HittableList::create();
     container->add(boundary);
     if (color) {
         auto content = ConstantMedium::create(boundary, density, *color);
@@ -118,7 +118,7 @@ inline int main(int argc, char** argv) {
         smoke = std::atoi(argv[2]) != 0;
     }
 
-    Objects world;
+    HittableList world;
 
     world.add(floor());
     world.add(light() | Translate(270., 500., 100.));

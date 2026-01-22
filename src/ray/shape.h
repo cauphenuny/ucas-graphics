@@ -77,7 +77,7 @@ public:
     }
 };
 
-class Quadrilateral : public Shape2D, public Emitable, public traits::CreateShared<Quadrilateral> {
+class Quadrilateral : public Shape2D, public Samplable, public traits::CreateShared<Quadrilateral> {
     double area;
 
 protected:
@@ -151,7 +151,7 @@ public:
 };
 
 class Box : public Hittable, public traits::CreateShared<Box> {
-    Objects sides;
+    HittableList sides;
 
 public:
     bool hit(const Ray& ray, Interval interval, HitResult& result) const {

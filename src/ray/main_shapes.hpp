@@ -27,7 +27,7 @@ inline int main(int argc, char** argv) {
 
     auto camera = construct_camera();
 
-    Objects world;
+    HittableList world;
 
     auto red = Lambertian::create(Color::red());
     auto green = Lambertian::create(Color::green());

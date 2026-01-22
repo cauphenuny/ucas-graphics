@@ -29,7 +29,7 @@ struct Camera {
     double defocus_angle = 0;  // variation angle of rays through each pixel, unit: angle
     double focus_dist = 10;
 
-    auto render(const Hittable& world, bool verbose = false, Emitable* lights = nullptr)
+    auto render(const Hittable& world, bool verbose = false, Samplable* lights = nullptr)
         -> RenderResult {
         initialize();
         auto image = std::vector<Color>(image_width * image_height);
@@ -124,7 +124,7 @@ private:
         return Ray(ray_origin, pixel_sample - ray_origin, ray_time);
     }
 
-    auto ray_color(const Ray& ray, const Hittable& world, Emitable* lights, int depth)
+    auto ray_color(const Ray& ray, const Hittable& world, Samplable* lights, int depth)
         -> Vec3 const {
         if (depth <= 0) return Color(0, 0, 0);
         auto center = Point3(0, 0, -1);

@@ -33,12 +33,11 @@ inline int main(int argc, char** argv) {
 
     auto camera = construct_camera();
 
-    Objects world;
+    HittableList world;
 
     auto marble_texture = MarbleTexture::create(3., Vec3(0, 0, 1));
     auto turb_texture = TurbulenceTexture::create(2.);
-    auto plain_texture =
-        ColorTexture::create(Color::mix(Color::silver(), Color::white()));
+    auto plain_texture = ColorTexture::create(Color::mix(Color::silver(), Color::white()));
 
     auto marble_material = Lambertian::create(marble_texture);
     auto medal_material = Metal::create(Color::brown(), 0.2);

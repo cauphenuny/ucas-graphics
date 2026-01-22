@@ -17,7 +17,7 @@ class TriangleMesh : public Hittable, public traits::CreateShared<TriangleMesh> 
     void build(
         meshark::GeometryMesh* mesh, std::shared_ptr<Material> mat, Point3 origin,
         Vec3 scale = Vec3(1, 1, 1)) {
-        Objects triangles;
+        HittableList triangles;
         for (auto f : mesh->faces()) {
             auto h = f->halfEdge();
             auto v0 = scale * mesh->pos(h->tail) + origin;

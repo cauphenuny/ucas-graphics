@@ -29,17 +29,15 @@ inline int main(int argc, char** argv) {
 
     auto camera = construct_camera();
 
-    Objects world;
+    HittableList world;
 
     auto marble_texture = MarbleTexture::create(3., Vec3(-0.6, 0, 1));
     auto turb_texture = TurbulenceTexture::create(2.);
-    world.add(
-        Sphere::create(Point3(0, -1000, 0), 1000, Lambertian::create(marble_texture)));
+    world.add(Sphere::create(Point3(0, -1000, 0), 1000, Lambertian::create(marble_texture)));
     world.add(Sphere::create(Point3(0, 2, 0), 2.0, Lambertian::create(turb_texture)));
 
     auto light = Light::create(Color::white() * 6.0);
-    world.add(
-        Quadrilateral::create(Point3(3, 1, -2), Vec3(2, 0, 0), Vec3(0, 2, 0), light));
+    world.add(Quadrilateral::create(Point3(3, 1, -2), Vec3(2, 0, 0), Vec3(0, 2, 0), light));
 
     auto image = camera.render(world, true);
 

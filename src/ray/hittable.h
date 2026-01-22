@@ -37,9 +37,9 @@ public:
     virtual BoundingBox bounding_box() const = 0;
 };
 
-class Emitable {
+class Samplable {
 public:
-    virtual ~Emitable() = default;
+    virtual ~Samplable() = default;
     virtual double pdf_value(const Point3& o, const Vec3& v) const = 0;
     virtual Vec3 random(const Point3& o) const = 0;
 };
@@ -47,13 +47,13 @@ public:
 template <typename T>
 concept IsHittable = std::derived_from<T, Hittable>;
 
-class Objects : public Hittable, public traits::CreateShared<Objects> {
+class HittableList : public Hittable, public traits::CreateShared<HittableList> {
     std::vector<std::shared_ptr<Hittable>> objects;
     BoundingBox bbox;
 
 public:
-    Objects() = default;
-    Objects(const std::shared_ptr<Hittable>& object) { add(object); }
+    HittableList() = default;
+    HittableList(const std::shared_ptr<Hittable>& object) { add(object); }
 
     const auto& items() const { return objects; }
 
@@ -79,5 +79,23 @@ public:
             }
         }
         return hit_anything;
+    }
+};
+
+class SamplableList : public Samplable, public traits::CreateShared<SamplableList> {
+    std::vector<std::shared_ptr<Samplable>> objects;
+
+    double pdf_value(const Point3& o, const Vec3& v) const override {
+        double weight = 1.0 / objects.size();
+        double accum = 0.0;
+        for (const auto& object : objects) {
+            accum += weight * object->pdf_value(o, v);
+        }
+        return accum;
+    }
+
+    Vec3 random(const Point3& o) const override {
+        int index = random_int(0, objects.size() - 1);
+        return objects[index]->random(o);
     }
 };

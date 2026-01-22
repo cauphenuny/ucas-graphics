@@ -24,7 +24,8 @@ inline auto construct_camera() {
     return cam;
 }
 
-inline auto construct_wall(Objects& world, auto&& green, auto&& red, auto&& white, auto&& emit) {
+inline auto
+construct_wall(HittableList& world, auto&& green, auto&& red, auto&& white, auto&& emit) {
     world.add(
         std::make_shared<Quadrilateral>(
             Point3(555, 0, 0), Vec3(0, 555, 0), Vec3(0, 0, 555), green));  // left
@@ -69,7 +70,7 @@ inline int main(int argc, char** argv) {
 
     auto camera = construct_camera();
 
-    Objects world;
+    HittableList world;
 
     auto red = Lambertian::create(Color(0.65, 0.05, 0.05));
     auto white = Lambertian::create(Color(0.73, 0.73, 0.73));

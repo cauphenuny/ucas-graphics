@@ -27,12 +27,11 @@ inline int main(int argc, char** argv) {
 
     auto camera = construct_camera();
 
-    Objects world;
+    HittableList world;
 
     auto marble_texture = MarbleTexture::create(3., Vec3(-0.6, 0, 1));
     auto turb_texture = TurbulenceTexture::create(2.);
-    world.add(
-        Sphere::create(Point3(0, -1000, 0), 1000, Lambertian::create(marble_texture)));
+    world.add(Sphere::create(Point3(0, -1000, 0), 1000, Lambertian::create(marble_texture)));
     world.add(Sphere::create(Point3(0, 2, 0), 2.0, Lambertian::create(turb_texture)));
 
     auto image = camera.render(world, true);

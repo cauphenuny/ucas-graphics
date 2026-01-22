@@ -12,7 +12,7 @@ class BVHNode : public Hittable, public traits::CreateShared<BVHNode> {
     BoundingBox bbox;
 
 public:
-    BVHNode(const Objects& objects) : BVHNode(objects.items(), 0, objects.items().size()) {}
+    BVHNode(const HittableList& objects) : BVHNode(objects.items(), 0, objects.items().size()) {}
 
     BVHNode(std::vector<std::shared_ptr<Hittable>> objects, size_t start, size_t end) {
         bbox = BoundingBox::empty();

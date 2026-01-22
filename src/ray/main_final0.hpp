@@ -11,7 +11,7 @@
 namespace demo::final0 {
 
 inline auto construct_world() {
-    Objects world;
+    HittableList world;
     auto checker = CheckerTexture::create(0.3, Color(0.2, 0.3, 0.1), Color(0.9, 0.9, 0.9));
     auto ground_material = Lambertian::create(checker);
     world.add(Sphere::create(Point3(0, -1000, 0), 1000, ground_material));

@@ -32,11 +32,12 @@ public:
 };
 
 class EmissionPDF : public Vec3PDF {
-    const Emitable& objects;
+    const Samplable& objects;
     Point3 origin;
 
 public:
-    EmissionPDF(const Emitable& objects, const Point3& origin) : objects(objects), origin(origin) {}
+    EmissionPDF(const Samplable& objects, const Point3& origin)
+        : objects(objects), origin(origin) {}
     double value(const Vec3& direction) const override {
         return objects.pdf_value(origin, direction);
     }
