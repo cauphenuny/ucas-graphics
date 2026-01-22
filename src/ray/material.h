@@ -60,14 +60,32 @@ public:
 };
 
 class Dielectric : public Material, public traits::CreateShared<Dielectric> {
-    double refraction_index;
+    double base_index;  // Base refractive index (A in Cauchy equation)
+    double dispersion;  // Dispersion coefficient (B in Cauchy equation, in μm²)
 
 public:
-    Dielectric(double ri) : refraction_index(ri) {}
+    // Constructor with optional dispersion (Cauchy equation: n = A + B/λ²)
+    // For glass: typical A ≈ 1.5, B ≈ 0.004-0.01 μm²
+    // For diamond: A ≈ 2.4, B ≈ 0.01-0.02 μm²
+    Dielectric(double ri, double dispersion_coeff = 0.3)
+        : base_index(ri), dispersion(dispersion_coeff) {}
+
+    // Calculate refractive index at given wavelength using Cauchy's equation
+    double refractive_index(double wavelength_nm) const {
+        if (dispersion == 0.0) {
+            return base_index;
+        }
+        // Convert wavelength from nm to μm for Cauchy equation
+        double lambda_um = wavelength_nm / 1000.0;
+        return base_index + dispersion / (lambda_um * lambda_um);
+    }
 
     bool scatter(const Ray& r_in, const HitResult& hit, ScatterResult& result) const override {
         result.attenuation = 1.0;
-        double etai_over_etat = hit.front_face ? (1.0 / refraction_index) : refraction_index;
+        double ri = refractive_index(r_in.wavelength());
+        // std::cerr << "Wavelength: " << r_in.wavelength() << " nm, Refractive Index: " << ri
+        //           << std::endl;
+        double etai_over_etat = hit.front_face ? (1.0 / ri) : ri;
 
         Vec3 unit_direction = r_in.direction().normalized();
         double cos_theta = std::fmin(dot(-unit_direction, hit.normal), 1.0);
