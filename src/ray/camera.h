@@ -131,12 +131,18 @@ private:
         }
         Ray scattered;
         Color attenuation;
-        Color color_emit = hit_result.mat->emit(hit_result.u, hit_result.v, hit_result.p);
+        Color color_emit = hit_result.mat->emit(ray, hit_result);
+        double sampling_pdf;
 
-        if (!hit_result.mat->scatter(ray, hit_result, attenuation, scattered)) {
+        if (!hit_result.mat->scatter(ray, hit_result, attenuation, scattered, sampling_pdf)) {
             return color_emit;
         }
-        auto color_scatter = attenuation * ray_color(scattered, world, depth - 1);
+
+        double scattering_pdf = hit_result.mat->scattering_pdf(ray, hit_result, scattered);
+        sampling_pdf = scattering_pdf;
+
+        auto color_scatter =
+            (attenuation * scattering_pdf * ray_color(scattered, world, depth - 1)) / sampling_pdf;
         return color_emit + color_scatter;
     }
 };

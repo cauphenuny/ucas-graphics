@@ -1,0 +1,23 @@
+#pragma once
+
+#include "vec.h"
+
+class OrthonormalBasis {
+    Vec3 axis[3];
+
+public:
+    explicit OrthonormalBasis(const Vec3& n) {
+        axis[2] = n.normalized();
+        Vec3 a = (std::fabs(axis[2].x()) > 0.9) ? Vec3(0, 1, 0) : Vec3(1, 0, 0);
+        axis[1] = cross(axis[2], a).normalized();
+        axis[0] = cross(axis[2], axis[1]);
+    }
+    const Vec3& operator[](int i) { return axis[i]; }
+    const Vec3& u() const { return axis[0]; }
+    const Vec3& v() const { return axis[1]; }
+    const Vec3& w() const { return axis[2]; }
+
+    Vec3 transform(const Vec3& a) const {
+        return a.x() * axis[0] + a.y() * axis[1] + a.z() * axis[2];
+    }
+};

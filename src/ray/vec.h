@@ -86,6 +86,15 @@ public:
             }
         }
     }
+    static Vec3 random_cosine_direction() {  // NOTE: sampling PDF p(omega) = cos(theta) / pi
+        auto r1 = random_double();
+        auto r2 = random_double();
+        auto phi = 2 * pi * r1;
+        auto x = std::cos(phi) * std::sqrt(r2);
+        auto y = std::sin(phi) * std::sqrt(r2);
+        auto z = std::sqrt(1 - r2);
+        return Vec3(x, y, z);
+    }
 };
 
 inline Vec3 operator+(const Vec3& u, const Vec3& v) {
