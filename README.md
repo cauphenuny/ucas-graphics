@@ -11,6 +11,8 @@ xmake run project1
 
 ## reports
 
+(typst source in `docs/src/*`)
+
 - [Project1: OpenGL Basics](docs/p1-basics.pdf)
 
   ![architecture](docs/src/basics/assets/architecture.png)
@@ -19,5 +21,16 @@ xmake run project1
 
   ![demo](docs/src/mesh/assets/demo.png)
 
-- [Project3: Ray Tracing](docs/p3-ray.pdf) (typst source in `docs/src/ray/`)
+- [Project3: Ray Tracing](docs/p3-ray.pdf) 
 
+  ![demo-spheres](docs/src/ray/assets/results/checker.png)
+
+  ![demo-mesh](docs/src/ray/assets/results/mesh.png)
+
+  ![demo-light](docs/src/ray/assets/results/light.png)
+
+  ![demo-complex](docs/src/ray/assets/results/complex.png)
+
+  ![demo-cornell](docs/src/ray/assets/results/cornell.png)
+
+  ![demo-cornell-spec](docs/src/ray/assets/results/cornell-spectrum.png)
