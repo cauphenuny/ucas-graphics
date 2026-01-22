@@ -1365,6 +1365,451 @@ $ L_o approx L_e + (f_r dot p_"scatter" dot L_i) / p_"sample" $
 
 #split-semi
 
+== 第四部分：光谱渲染（Spectral Rendering）
+
+=== 概述与动机
+
+传统的 RGB 渲染虽然计算简单，但存在物理准确性问题：RGB 只是人眼对可见光谱的简化表示，无法精确模拟真实光线的波长相关行为。光谱渲染通过在整个可见光波长范围内进行计算，提供了更物理准确的光照模拟。
+
+*光谱渲染的优势：*
+1. *物理准确性*：直接模拟光的波长特性
+2. *色散模拟*：棱镜等色散现象（通过波长相关折射率）
+3. *波长采样*：材质属性可以在特定波长处采样
+4. *色彩管理*：更准确的色彩空间转换（通过 CIE XYZ）
+
+*核心实现 commit 参考：*
+- `ca89419`：光谱数据结构与 CIE 色彩匹配函数
+- `47d5f67`：RGB 到光谱转换（Smits 1999 方法）
+- `336d96f`：材质系统重构，支持波长相关的材质属性
+
+=== 重构概览：从 RGB 到 Spectrum
+
+*之前的 RGB 架构：*
+```cpp
+// 旧实现：直接使用 Vec3 表示颜色
+class Material {
+    Color albedo;  // Color = Vec3，三通道 RGB
+    virtual Color scatter(...) const;
+};
+```
+
+*重构后的 Spectrum 架构：*
+```cpp
+// 新实现：使用 Spectrum 类进行光谱采样
+class Material {
+    Spectrum albedo;  // 60个波长样本（400-700nm）
+    virtual Spectrum scatter(...) const;
+};
+```
+
+*关键变化：*
+1. *颜色表示*：`Vec3 (RGB)` → `Spectrum (60 samples)`
+2. *波长范围*：400nm - 700nm（可见光）
+3. *采样策略*：均匀分布 60 个样本点
+4. *转换接口*：支持 RGB ↔ Spectrum 双向转换
+
+=== Spectrum 类实现
+
+==== 基础结构
+
+```cpp
+class Spectrum {
+public:
+    static constexpr int nSamples = 60;           // 采样数量
+    static constexpr double lambdaStart = 400;    // 起始波长（nm）
+    static constexpr double lambdaEnd = 700;      // 结束波长（nm）
+
+private:
+    std::array<double, nSamples> c = {};  // 光谱样本值
+    
+    // 静态数据：CIE XYZ 匹配函数、RGB 转换表
+    struct StaticData {
+        std::array<double, nSamples> sX, sY, sZ;  // CIE 色彩匹配
+        // RGB to Spectrum 转换表（反射 + 发光）
+        std::array<double, nSamples> rgbRefl2Spect[7];
+        std::array<double, nSamples> rgbIllum2Spect[7];
+        bool initialized = false;
+    };
+};
+```
+
+*设计要点：*
+- 60 个样本覆盖 400-700nm 可见光范围
+- 每个样本间隔约 5nm
+- 采用懒加载：首次使用时初始化转换表
+
+==== RGB 到光谱转换（Smits 1999）
+
+核心算法基于 *Smits 1999* 论文，使用基函数插值：
+
+```cpp
+static Spectrum fromRGB(const double rgb[3], SpectrumType type) {
+    auto& white = (type == Reflectance) ? rgbRefl2SpectWhite : rgbIllum2SpectWhite;
+    auto& cyan  = (type == Reflectance) ? rgbRefl2SpectCyan  : rgbIllum2SpectCyan;
+    auto& magenta = /* ... */;
+    auto& yellow  = /* ... */;
+    auto& red     = /* ... */;
+    auto& green   = /* ... */;
+    auto& blue    = /* ... */;
+    
+    Spectrum result;
+    
+    // 根据 RGB 大小关系选择插值路径
+    if (rgb[0] <= rgb[1] && rgb[0] <= rgb[2]) {
+        // R 最小：white + cyan + (blue or green)
+        result += rgb[0] * white;
+        if (rgb[1] <= rgb[2]) {
+            result += (rgb[1] - rgb[0]) * cyan;
+            result += (rgb[2] - rgb[1]) * blue;
+        } else {
+            result += (rgb[2] - rgb[0]) * cyan;
+            result += (rgb[1] - rgb[2]) * green;
+        }
+    }
+    // ... 其他分支（G 最小、B 最小）
+    
+    return result.clamp();
+}
+```
+
+*算法原理：*
+1. RGB 空间被分解为 6 个四面体区域
+2. 每个区域用 3 个基函数插值
+3. 基函数：白、青、品红、黄、红、绿、蓝
+4. 区分 *反射光谱* 和 *发光光谱* 两种类型
+
+*类型区分：*
+- `SpectrumType::Reflectance`：表面反射率（0-1）
+- `SpectrumType::Illuminant`：光源发光强度（可 > 1）
+
+==== 光谱到 RGB 转换
+
+通过 CIE XYZ 色彩匹配函数进行转换：
+
+```cpp
+void toXYZ(double xyz[3]) const {
+    xyz[0] = xyz[1] = xyz[2] = 0;
+    for (int i = 0; i < nSamples; ++i) {
+        xyz[0] += sX[i] * c[i];  // X 通道
+        xyz[1] += sY[i] * c[i];  // Y 通道（亮度）
+        xyz[2] += sZ[i] * c[i];  // Z 通道
+    }
+    // 归一化
+    double scale = (lambdaEnd - lambdaStart) / (CIE_Y_integral * nSamples);
+    xyz[0] *= scale; xyz[1] *= scale; xyz[2] *= scale;
+}
+
+void toRGB(double rgb[3]) const {
+    double xyz[3];
+    toXYZ(xyz);
+    XYZToRGB(xyz, rgb);  // 标准 XYZ -> RGB 矩阵变换
+}
+```
+
+*转换流程：*
+```
+Spectrum (60 samples) 
+    ↓ 与 CIE XYZ 匹配函数卷积
+XYZ 三刺激值
+    ↓ 线性变换矩阵
+RGB 颜色
+```
+
+*CIE XYZ 色彩匹配函数：*
+- 基于人眼视锥细胞响应曲线
+- 81 个标准样本点（380-780nm，5nm 间隔）
+- 通过插值映射到 60 个光谱样本
+
+=== CIE 色彩匹配与转换
+
+==== CIE 1931 标准观察者
+
+```cpp
+namespace spectrum_data {
+    // CIE XYZ 匹配函数（380-780nm，81 个样本）
+    inline constexpr int nCIESamples = 81;
+    inline constexpr double CIE_lambda[nCIESamples] = {
+        380, 385, 390, ..., 775, 780
+    };
+    inline constexpr double CIE_X[nCIESamples] = { /* ... */ };
+    inline constexpr double CIE_Y[nCIESamples] = { /* ... */ };
+    inline constexpr double CIE_Z[nCIESamples] = { /* ... */ };
+    inline constexpr double CIE_Y_integral = 106.856895;
+}
+```
+
+*功能：*
+- $overline(x)(lambda), overline(y)(lambda), overline(z)(lambda)$：三刺激值函数
+- 将任意光谱分布转换为 XYZ 颜色空间
+- $overline(y)(lambda)$ 对应人眼亮度响应（V(λ) 函数）
+
+==== XYZ ↔ RGB 转换矩阵
+
+```cpp
+// XYZ → sRGB（D65 白点）
+inline void XYZToRGB(const double xyz[3], double rgb[3]) {
+    rgb[0] =  3.240479 * xyz[0] - 1.537150 * xyz[1] - 0.498535 * xyz[2];
+    rgb[1] = -0.969256 * xyz[0] + 1.875991 * xyz[1] + 0.041556 * xyz[2];
+    rgb[2] =  0.055648 * xyz[0] - 0.204043 * xyz[1] + 1.057311 * xyz[2];
+}
+
+// sRGB → XYZ
+inline void RGBToXYZ(const double rgb[3], double xyz[3]) {
+    xyz[0] = 0.412453 * rgb[0] + 0.357580 * rgb[1] + 0.180423 * rgb[2];
+    xyz[1] = 0.212671 * rgb[0] + 0.715160 * rgb[1] + 0.072169 * rgb[2];
+    xyz[2] = 0.019334 * rgb[0] + 0.119193 * rgb[1] + 0.950227 * rgb[2];
+}
+```
+
+*标准：*
+- sRGB 色彩空间（IEC 61966-2-1）
+- D65 标准光源（色温 6500K）
+- 线性 RGB（未应用 gamma 校正）
+
+=== 光谱采样与插值
+
+==== 波长采样
+
+```cpp
+double operator()(double lambda) const {
+    if (lambda < lambdaStart || lambda > lambdaEnd) return 0;
+    
+    // 线性插值
+    double t = (lambda - lambdaStart) / (lambdaEnd - lambdaStart) * nSamples;
+    int i = std::min(int(t), nSamples - 1);
+    double dt = t - i;
+    
+    if (i >= nSamples - 1) return c[nSamples - 1];
+    return (1 - dt) * c[i] + dt * c[i + 1];
+}
+```
+
+*用途：*
+- 查询任意波长的光谱值
+- 支持色散模拟（不同波长不同折射率）
+
+==== 区间平均采样
+
+```cpp
+inline double averageSpectrumSamples(
+    const double* lambda, const double* vals, int n,
+    double lambdaStart, double lambdaEnd) {
+    
+    // 梯形积分法
+    double sum = 0;
+    for (int i = 0; i + 1 < n && lambdaEnd >= lambda[i]; ++i) {
+        double segStart = std::max(lambdaStart, lambda[i]);
+        double segEnd = std::min(lambdaEnd, lambda[i + 1]);
+        sum += 0.5 * (interp(segStart, i) + interp(segEnd, i)) 
+               * (segEnd - segStart);
+    }
+    return sum / (lambdaEnd - lambdaStart);
+}
+```
+
+*应用场景：*
+- 初始化时，将 CIE 81 样本映射到 60 样本
+- 保证能量守恒的降采样
+
+=== 光谱运算
+
+```cpp
+class Spectrum {
+    // 算术运算（逐波长）
+    Spectrum operator+(const Spectrum& s) const;  // 光谱叠加
+    Spectrum operator*(const Spectrum& s) const;  // 逐波长相乘（光谱调制）
+    Spectrum operator*(double a) const;           // 标量缩放
+    
+    // 工具函数
+    double y() const;  // 计算亮度（Y 通道）
+    double maxComponent() const;  // 最大光谱值
+    bool isBlack() const;  // 是否为黑色
+    Spectrum clamp(double low = 0, double high = 1e30) const;
+    
+    // 数学函数（逐波长应用）
+    friend Spectrum sqrt(const Spectrum& s);
+    friend Spectrum exp(const Spectrum& s);
+    friend Spectrum pow(const Spectrum& s, double e);
+    friend Spectrum lerp(double t, const Spectrum& s1, const Spectrum& s2);
+};
+```
+
+*物理意义：*
+- `a * b`：反射率调制（材质反射率 × 入射光）
+- `a + b`：光谱能量叠加（多光源）
+- `sqrt(s)`：用于重要性采样的方差计算
+
+=== 材质系统重构
+
+==== 波长相关的材质属性
+
+实际实现中，光谱渲染主要用于两个方面：
+
+1. **金属材质的波长采样**：存储完整光谱，在特定波长处采样
+2. **电介质的色散模拟**：折射率随波长变化（Cauchy 方程）
+
+```cpp
+class Metal : public Material {
+    Spectrum albedo;  // 光谱反射率
+    double fuzz;
+    
+public:
+    Metal(const Color& color, double fuzz = 0) : albedo(color), fuzz(fuzz) {}
+    
+    bool scatter(const Ray& r_in, const HitResult& hit, 
+                 ScatterResult& result) const override {
+        Vec3 reflected = reflect(r_in.direction().normalized(), hit.normal).normalized() +
+                         (fuzz * Vec3::random_unit());
+        result.scattered = r_in.redirect(hit.p, reflected);
+        // 在光线的波长处采样反射率
+        result.attenuation = albedo.value(r_in.wavelength());
+        return dot(reflected, hit.normal) > 0;
+    }
+};
+```
+
+==== 示例：色散材质
+
+```cpp
+class Dielectric : public Material {
+    double base_index;  // 基础折射率（Cauchy 方程中的 A）
+    double dispersion;  // 色散系数（Cauchy 方程中的 B，单位：μm²）
+    
+public:
+    // Cauchy 方程：n = A + B/λ²
+    // 玻璃：A ≈ 1.5, B ≈ 0.004-0.01 μm²
+    // 钻石：A ≈ 2.4, B ≈ 0.01-0.02 μm²
+    Dielectric(double ri, double dispersion_coeff = 0.3)
+        : base_index(ri), dispersion(dispersion_coeff) {}
+    
+    // 使用 Cauchy 方程计算给定波长的折射率
+    double refractive_index(double wavelength_nm) const {
+        if (dispersion == 0.0) return base_index;
+        double lambda_um = wavelength_nm / 1000.0;  // nm → μm
+        return base_index + dispersion / (lambda_um * lambda_um);
+    }
+    
+    bool scatter(const Ray& r_in, const HitResult& hit, 
+                 ScatterResult& result) const override {
+        result.attenuation = 1.0;
+        // 根据光线波长计算折射率
+        double ri = refractive_index(r_in.wavelength());
+        // ... 折射/反射逻辑
+    }
+};
+```
+
+*核心特性：*
+- **金属**：完整光谱存储，波长处采样（`albedo.value(wavelength)`）
+- **电介质**：Cauchy 方程实现色散（`n = A + B/λ²`）
+- **光线追踪**：每条光线携带波长信息（`Ray.wavelength()`）
+- **颜色转换**：最终通过 CIE XYZ 转换回 RGB
+
+=== 向后兼容性
+
+为保证平滑过渡，Spectrum 类提供 RGB 兼容接口：
+
+```cpp
+class Spectrum {
+    // 从 Color/Vec3 隐式构造
+    explicit Spectrum(const Color& color);
+    explicit Spectrum(const Vec3& rgb);
+    
+    // 转换回 Color
+    Color toColor() const;
+    
+    // 静态工厂函数
+    static Spectrum fromRGB(const Color& color, 
+                           SpectrumType type = SpectrumType::Reflectance);
+    
+    // 旧 API 别名
+    static constexpr double visible_min = lambdaStart;
+    static constexpr double visible_max = lambdaEnd;
+    static Spectrum constant(double v) { return Spectrum(v); }
+};
+```
+
+*使用示例：*
+```cpp
+// 旧代码仍可运行
+Material* mat = new Lambertian(Color(0.8, 0.3, 0.3));
+
+// 内部自动转换：
+// Color → Spectrum::fromRGB(...) → 60 个波长样本
+
+// 渲染输出时：
+Spectrum pixel_spectrum = trace_ray(...);
+Color rgb = pixel_spectrum.toColor();  // Spectrum → RGB
+```
+
+=== 性能考量
+
+*内存占用：*
+- RGB：3 × 8 = 24 字节
+- Spectrum：60 × 8 = 480 字节
+- *增幅：20 倍*
+
+*计算开销：*
+- RGB 运算：3 次浮点操作
+- Spectrum 运算：60 次浮点操作
+- *增幅：20 倍*
+
+*优化策略：*
+1. *惰性初始化*：转换表仅初始化一次
+
+*适用场景：*
+- ✓ 需要色散效果的场景（棱镜）
+- ✓ 需要物理准确波长模拟的科学可视化
+- ✓ 宝石等具有强色散材质的渲染
+- ✗ 实时渲染（性能开销大）
+- ✗ 简单场景（RGB 已足够）
+
+=== 扩展应用
+
+==== 色散模拟（Cauchy 方程）
+
+```cpp
+class Dielectric : public Material {
+    double base_index;  // 基础折射率 A
+    double dispersion;  // 色散系数 B（单位：μm²）
+    
+    // 波长相关折射率（Cauchy 方程）
+    double refractive_index(double wavelength_nm) const {
+        if (dispersion == 0.0) return base_index;
+        double lambda_um = wavelength_nm / 1000.0;  // nm → μm
+        return base_index + dispersion / (lambda_um * lambda_um);
+    }
+};
+```
+
+*实际应用：*
+- 玻璃、水晶的色散效果
+- 棱镜分光现象
+- 不同波长的不同折射路径
+
+=== 小结
+
+光谱渲染重构实现了从 RGB 到物理准确光谱的跨越：
+
+*架构变化：*
+- 核心颜色表示：`Vec3` → `Spectrum` (60 samples)
+- 转换系统：Smits 1999 RGB ↔ Spectrum
+- 色彩科学：CIE XYZ 色彩匹配函数
+- 材质系统：支持波长相关的材质属性
+
+*技术亮点：*
+- 物理准确的可见光建模（400-700nm）
+- 能量守恒的转换算法
+- 完整的向后兼容性
+- 支持色散波长相关效果
+
+*实现参考：*
+- PBRT-v3 光谱系统设计
+- Physically Based Rendering 4th Edition
+- Smits 1999: "An RGB-to-Spectrum Conversion for Reflectances"
+
+#split-semi
+
 == 总结
 
 本光线追踪项目实现了从基础到高级的完整渲染管线：
@@ -1390,6 +1835,13 @@ $ L_o approx L_e + (f_r dot p_"scatter" dot L_i) / p_"sample" $
 - 正交基坐标变换
 - 混合采样策略（MixturePDF）
 - 康奈尔盒经典场景
+
+*第四部分* 光谱渲染系统：
+- 从 RGB 到光谱的架构重构（60 个波长样本）
+- Smits 1999 RGB ↔ Spectrum 转换算法
+- CIE XYZ 色彩匹配与标准观察者
+- 波长相关的材质属性（色散、波长采样）
+- 支持色散物理效果
 
 渲染器性能指标：
 - 支持数万级物体场景（BVH 加速）
