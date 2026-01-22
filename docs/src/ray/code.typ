@@ -429,11 +429,27 @@ auto ray_color(const Ray& ray, const Hittable& world,
     
     auto& [attenuation, scattered] = scatter_result;
     
-    // 处理散射（简化版本）
-    auto scattered_ray = Ray(hit_result.p, pdf->generate(), ray.time());
-    Color sampled_color = ray_color(scattered_ray, world, sample_target, depth - 1);
+    // 处理散射：使用模式匹配处理不同类型的散射结果
+    auto color_scatter = Match{std::move(scattered)}(
+        [&](Ray ray) -> Color {
+            // 镜面反射/折射：直接使用散射光线
+            return attenuation * ray_color(ray, world, sample_target, depth - 1);
+        },
+        [&](std::unique_ptr<Vec3PDF> pdf) -> Color {
+            // 漫反射：使用概率密度函数进行重要性采样
+            std::unique_ptr<Vec3PDF> scatter_pdf =
+                sample_target ? std::make_unique<MixturePDF>(
+                                    std::make_unique<ObjectPDF>(*sample_target, hit_result.p),
+                                    std::move(pdf))
+                              : std::move(pdf);
+            auto scattered_ray = Ray(hit_result.p, scatter_pdf->generate(), ray.time());
+            double sampling_prob = scatter_pdf->value(scattered_ray.direction());
+            double scatter_prob = hit_result.mat->scattering_pdf(ray, hit_result, scattered_ray);
+            Color sampled_color = ray_color(scattered_ray, world, sample_target, depth - 1);
+            return (attenuation * scatter_prob * sampled_color) / sampling_prob;
+        });
     
-    return color_emit + attenuation * sampled_color;
+    return color_emit + color_scatter;
 }
 ```
 
