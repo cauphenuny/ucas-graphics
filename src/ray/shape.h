@@ -77,7 +77,9 @@ public:
     }
 };
 
-class Quadrilateral : public Shape2D, public traits::CreateShared<Quadrilateral> {
+class Quadrilateral : public Shape2D, public Emitable, public traits::CreateShared<Quadrilateral> {
+    double area;
+
 protected:
     void set_bounding_box() override {
         auto bbox_diag1 = BoundingBox::diag(origin, origin + vec_u);
@@ -99,7 +101,24 @@ protected:
 public:
     Quadrilateral(const Point3& origin, const Vec3& u, const Vec3& v, std::shared_ptr<Material> mat)
         : Shape2D(origin, u, v, mat) {
+        area = cross(u, v).norm();
         set_bounding_box();
+    }
+
+    double pdf_value(const Point3& o, const Vec3& v) const override {
+        HitResult result;
+        Ray ray(o, v);
+        if (!hit(ray, Interval(0.001, infinity), result)) return 0.0;
+
+        auto distance_squared = result.t * result.t * v.sqrnorm();
+        auto cosine = std::fabs(dot(normal, v.normalized()));
+
+        return distance_squared / (cosine * area);
+    }
+
+    Vec3 random(const Point3& o) const override {
+        auto random_point = origin + random_double() * vec_u + random_double() * vec_v;
+        return random_point - o;
     }
 };
 

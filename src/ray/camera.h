@@ -2,10 +2,12 @@
 
 #include "hittable.h"
 #include "material.h"
+#include "pdf.h"
 
 #include <atomic>
 #include <format>
 #include <iostream>
+#include <optional>
 #include <vector>
 
 struct RenderResult {
@@ -28,7 +30,8 @@ struct Camera {
     double defocus_angle = 0;  // variation angle of rays through each pixel, unit: angle
     double focus_dist = 10;
 
-    auto render(const Hittable& world, bool verbose = false) -> RenderResult {
+    auto render(const Hittable& world, bool verbose = false, Emitable* lights = nullptr)
+        -> RenderResult {
         initialize();
         auto image = std::vector<Color>(image_width * image_height);
 
@@ -40,7 +43,7 @@ struct Camera {
                 for (int sj = 0; sj < sqrt_spp; sj++) {
                     for (int si = 0; si < sqrt_spp; si++) {
                         Ray r = get_ray(i, j, si, sj);
-                        pixel_color += ray_color(r, world, max_depth);
+                        pixel_color += ray_color(r, world, lights, max_depth);
                     }
                 }
                 image[j * image_width + i] = pixel_color * pixel_samples_scale;
@@ -122,7 +125,8 @@ private:
         return Ray(ray_origin, pixel_sample - ray_origin, ray_time);
     }
 
-    auto ray_color(const Ray& ray, const Hittable& world, int depth) -> Vec3 const {
+    auto ray_color(const Ray& ray, const Hittable& world, Emitable* lights, int depth)
+        -> Vec3 const {
         if (depth <= 0) return Color(0, 0, 0);
         auto center = Point3(0, 0, -1);
         HitResult hit_result;
@@ -132,17 +136,25 @@ private:
         Ray scattered;
         Color attenuation;
         Color color_emit = hit_result.mat->emit(ray, hit_result);
-        double sampling_pdf;
+        double sampling_pdf, scattering_pdf;
 
         if (!hit_result.mat->scatter(ray, hit_result, attenuation, scattered, sampling_pdf)) {
             return color_emit;
         }
 
-        double scattering_pdf = hit_result.mat->scattering_pdf(ray, hit_result, scattered);
-        sampling_pdf = scattering_pdf;
+        if (lights) {
+            EmissionPDF light_pdf(*lights, hit_result.p);
+            scattered = Ray(hit_result.p, light_pdf.generate(), ray.time());
+            sampling_pdf = light_pdf.value(scattered.direction());
+            scattering_pdf = hit_result.mat->scattering_pdf(ray, hit_result, scattered);
+        } else {
+            scattering_pdf = hit_result.mat->scattering_pdf(ray, hit_result, scattered);
+            sampling_pdf = scattering_pdf;
+        }
 
-        auto color_scatter =
-            (attenuation * scattering_pdf * ray_color(scattered, world, depth - 1)) / sampling_pdf;
+        auto sampled_color = ray_color(scattered, world, lights, depth - 1);
+        auto color_scatter = (attenuation * scattering_pdf * sampled_color) / sampling_pdf;
+
         return color_emit + color_scatter;
     }
 };

@@ -16,7 +16,7 @@ public:
     virtual Color emit(const Ray& r_in, const HitResult& hit) const { return Color(0, 0, 0); }
     virtual double
     scattering_pdf(const Ray& r_in, const HitResult& hit, const Ray& scattered) const {
-        return 0.0;
+        return 1.0;
     }
 };
 
@@ -31,7 +31,7 @@ public:
         const Ray& r_in, const HitResult& hit, Color& attenuation, Ray& scattered,
         double& pdf) const override {
         OrthonormalBasis uvw(hit.normal);
-        auto scatter_direction = uvw.transform(Vec3::random_cosine_direction());
+        auto scatter_direction = uvw.transform(Vec3::random_cosine_z());
         if (scatter_direction.near_zero()) {
             scatter_direction = hit.normal;
         }

@@ -86,7 +86,7 @@ public:
             }
         }
     }
-    static Vec3 random_cosine_direction() {  // NOTE: sampling PDF p(omega) = cos(theta) / pi
+    static Vec3 random_cosine_z() {  // NOTE: sampling PDF p(omega) = cos(theta) / pi
         auto r1 = random_double();
         auto r2 = random_double();
         auto phi = 2 * pi * r1;

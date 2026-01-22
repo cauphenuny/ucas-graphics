@@ -24,7 +24,7 @@ inline auto construct_camera() {
     return cam;
 }
 
-inline auto construct_wall(Objects& world, auto&& green, auto&& red, auto&& white, auto&& light) {
+inline auto construct_wall(Objects& world, auto&& green, auto&& red, auto&& white, auto&& emit) {
     world.add(
         std::make_shared<Quadrilateral>(
             Point3(555, 0, 0), Vec3(0, 555, 0), Vec3(0, 0, 555), green));  // left
@@ -33,7 +33,7 @@ inline auto construct_wall(Objects& world, auto&& green, auto&& red, auto&& whit
             Point3(0, 0, 0), Vec3(0, 555, 0), Vec3(0, 0, 555), red));  // right
     world.add(
         std::make_shared<Quadrilateral>(
-            Point3(343, 554, 332), Vec3(-130, 0, 0), Vec3(0, 0, -105), light));  // light
+            Point3(343, 554, 332), Vec3(-130, 0, 0), Vec3(0, 0, -105), emit));  // light
     world.add(
         std::make_shared<Quadrilateral>(
             Point3(0, 0, 0), Vec3(555, 0, 0), Vec3(0, 0, 555), white));  // floor
@@ -42,14 +42,22 @@ inline auto construct_wall(Objects& world, auto&& green, auto&& red, auto&& whit
             Point3(0, 0, 555), Vec3(555, 0, 0), Vec3(0, 555, 0), white));  // back
     world.add(
         std::make_shared<Quadrilateral>(
-            Point3(555, 555, 555), Vec3(-555, 0, 0), Vec3(0, 0, -555), red));  // ceiling
+            Point3(555, 555, 555), Vec3(-555, 0, 0), Vec3(0, 0, -555), white));  // ceiling
 }
 
 inline int main(int argc, char** argv) {
     if (argc < 2) return 1;
     bool smoke = false;
+    bool sample_light = false;
     if (argc > 2) {
-        smoke = std::atoi(argv[2]) != 0;
+        for (int i = 2; i < argc; i++) {
+            if (std::string_view(argv[i]) == "--smoke") {
+                smoke = true;
+            }
+            if (std::string_view(argv[i]) == "--sample_light") {
+                sample_light = true;
+            }
+        }
     }
 
     auto camera = construct_camera();
@@ -59,9 +67,11 @@ inline int main(int argc, char** argv) {
     auto red = Lambertian::create(Color(0.65, 0.05, 0.05));
     auto white = Lambertian::create(Color(0.73, 0.73, 0.73));
     auto green = Lambertian::create(Color(0.12, 0.45, 0.15));
-    auto light = Light::create(Color::white() * 15.0);
+    auto emit = Light::create(Color::white() * 15.0);
 
-    construct_wall(world, green, red, white, light);
+    construct_wall(world, green, red, white, emit);
+
+    Quadrilateral light(Point3(343, 554, 332), Vec3(-130, 0, 0), Vec3(0, 0, -105), emit);
 
     std::shared_ptr<Hittable> box1 = Box::create(Point3(0, 0, 0), Point3(165, 330, 165), white);
 
@@ -79,7 +89,11 @@ inline int main(int argc, char** argv) {
         world.add(box2);
     }
 
-    auto image = camera.render(world, true);
+    if (sample_light) {
+        camera.samples_per_pixel = 10;
+    }
+
+    auto image = camera.render(world, true, sample_light ? &light : nullptr);
 
     auto file = std::ofstream(argv[1], std::ios::binary | std::ios::out);
     dump(image, file);

@@ -37,6 +37,13 @@ public:
     virtual BoundingBox bounding_box() const = 0;
 };
 
+class Emitable {
+public:
+    virtual ~Emitable() = default;
+    virtual double pdf_value(const Point3& o, const Vec3& v) const = 0;
+    virtual Vec3 random(const Point3& o) const = 0;
+};
+
 template <typename T>
 concept IsHittable = std::derived_from<T, Hittable>;
 
