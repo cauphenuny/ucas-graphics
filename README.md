@@ -21,7 +21,7 @@ xmake run project1
 
   ![demo](docs/src/mesh/assets/demo.png)
 
-- [Project3: Ray Tracing](docs/p3-ray.pdf) 
+- [Project3: Ray Tracing](docs/p3-ray.pdf)
 
   ![demo-spheres](docs/src/ray/assets/results/checker.png)
 
@@ -30,6 +30,8 @@ xmake run project1
   ![demo-light](docs/src/ray/assets/results/light.png)
 
   ![demo-complex](docs/src/ray/assets/results/complex.png)
+
+  ![demo-cornell](docs/src/ray/assets/results/cornell-metal-s20k.png)
 
   ![demo-cornell](docs/src/ray/assets/results/cornell.png)
 
