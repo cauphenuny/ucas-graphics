@@ -12,11 +12,11 @@ namespace demo::cornell {
 
 inline auto construct_camera() {
     Camera cam;
-    cam.aspect_ratio = 16.0 / 9.0;
+    cam.aspect_ratio = 1;
     cam.image_width = 800;
-    cam.samples_per_pixel = 1000;
+    cam.samples_per_pixel = 3000;
     cam.max_depth = 50;
-    cam.vfov = 40.0;
+    cam.vfov = 38.0;
     cam.lookfrom = Point3(278, 278, -800);
     cam.lookat = Point3(278, 278, 0);
     cam.vup = Vec3(0, 1, 0);
