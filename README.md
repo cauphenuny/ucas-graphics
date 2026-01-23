@@ -23,8 +23,8 @@ xmake run project1
 
 - [Project3: Ray Tracing](docs/p3-ray.pdf)
   
-  > [!note]
-  > For these demos, please checkout at `rgb` branch
+> [!NOTE]
+> For these demos, please checkout at `rgb` branch
 
   ![demo-spheres](docs/src/ray/assets/results/checker.png)
 
@@ -38,7 +38,7 @@ xmake run project1
 
   ![demo-cornell](docs/src/ray/assets/results/cornell.png)
 
-  > [!note]
-  > For this demo, please checkout at `master`
+> [!NOTE]
+> For this demo, please checkout at `master`
 
   ![demo-cornell-spec](docs/src/ray/assets/results/cornell-spectrum.png)
